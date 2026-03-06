@@ -43,7 +43,7 @@
   "dependencies": {
     "@rrweb/record": "2.0.0-alpha.20",
     "@rrweb/types": "2.0.0-alpha.20",
-    "html-to-image": "^1.11.13"
+    "html2canvas-pro": "^2.0.2"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
