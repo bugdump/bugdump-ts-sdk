@@ -1,0 +1,59 @@
+{
+  "name": "@bugdump/sdk",
+  "version": "0.0.1",
+  "description": "Official Bugdump SDK - Embed bug reporting widget on your website",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "lint": "tsc --noEmit && eslint .",
+    "prepublishOnly": "pnpm build"
+  },
+  "keywords": [
+    "bugdump",
+    "sdk",
+    "bug-reporting",
+    "widget",
+    "feedback"
+  ],
+  "author": "Bugdump",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/bugdump-app/bugdump-ts-sdk"
+  },
+  "bugs": {
+    "url": "https://github.com/bugdump-app/bugdump-ts-sdk/issues"
+  },
+  "homepage": "https://bugdump.com",
+  "sideEffects": false,
+  "dependencies": {
+    "@rrweb/record": "2.0.0-alpha.20",
+    "@rrweb/types": "2.0.0-alpha.20",
+    "html-to-image": "^1.11.13"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "eslint": "^9.17.0",
+    "tsup": "^8.3.5",
+    "typescript": "^5.7.2",
+    "typescript-eslint": "^8.18.2"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "type": "module"
+}
