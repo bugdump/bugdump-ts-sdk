@@ -23,12 +23,45 @@ export class HttpClient {
     return this.post<UploadResponse>('/api/widget/v1/reports/upload', request);
   }
 
-  async uploadFileToS3(presignedUrl: string, fields: Record<string, string>, file: Blob): Promise<void> {
+  async uploadFileToS3(
+    presignedUrl: string,
+    fields: Record<string, string>,
+    file: Blob,
+    onProgress?: (percent: number) => void,
+  ): Promise<void> {
     const formData = new FormData();
     for (const [key, value] of Object.entries(fields)) {
       formData.append(key, value);
     }
     formData.append('file', file);
+
+    if (onProgress) {
+      return new Promise<void>((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', presignedUrl);
+
+        xhr.upload.addEventListener('progress', (e) => {
+          if (e.lengthComputable) {
+            onProgress(Math.round((e.loaded / e.total) * 100));
+          }
+        });
+
+        xhr.addEventListener('load', () => {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            onProgress(100);
+            resolve();
+          } else {
+            reject(new BugdumpApiError('S3_UPLOAD_FAILED', xhr.status));
+          }
+        });
+
+        xhr.addEventListener('error', () => {
+          reject(new BugdumpApiError('S3_UPLOAD_FAILED', 0));
+        });
+
+        xhr.send(formData);
+      });
+    }
 
     const response = await fetch(presignedUrl, {
       method: 'POST',

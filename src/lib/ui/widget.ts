@@ -12,7 +12,7 @@ export class Widget {
 
   private onSubmit: ((data: PanelSubmitData) => Promise<void>) | null = null;
 
-  constructor() {
+  constructor(options?: { hideButton?: boolean }) {
     this.host = document.createElement('bugdump-widget');
     this.host.style.cssText = 'all:initial;position:fixed;z-index:2147483647;';
 
@@ -23,6 +23,9 @@ export class Widget {
     this.shadowRoot.appendChild(style);
 
     this.triggerBtn = this.createTriggerButton();
+    if (options?.hideButton) {
+      this.triggerBtn.style.display = 'none';
+    }
     this.shadowRoot.appendChild(this.triggerBtn);
 
     this.panel = new Panel(this.shadowRoot);
@@ -40,6 +43,10 @@ export class Widget {
 
   setReporterInfo(name: string, email: string): void {
     this.panel.setReporterInfo(name, email);
+  }
+
+  setUploadProgress(current: number, total: number, filePercent: number): void {
+    this.panel.setUploadProgress(current, total, filePercent);
   }
 
   toggle(): void {

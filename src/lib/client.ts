@@ -52,6 +52,7 @@ export class Bugdump {
     instance.state.initialized = true;
     instance.httpClient = new HttpClient(resolved.endpoint, resolved.projectKey);
 
+    instance.networkCollector = new NetworkCollector({ captureBodies: resolved.captureNetworkBodies });
     instance.consoleCollector.start();
     instance.networkCollector.start();
     instance.sessionReplayCollector.start();
@@ -138,7 +139,7 @@ export class Bugdump {
   private mountWidget(): void {
     if (typeof document === 'undefined') return;
 
-    this.widget = new Widget();
+    this.widget = new Widget({ hideButton: this.state.config?.hideButton });
     this.widget.setOnSubmit((data) => this.handleSubmit(data));
   }
 
@@ -149,20 +150,50 @@ export class Bugdump {
 
     const uploadedAttachments: ReportPayload['attachments'] = [];
 
+    const hasReplay = telemetry.sessionReplayEvents.length > 0;
+    const totalUploads = data.attachments.length + (hasReplay ? 1 : 0);
+    let uploadIndex = 0;
+
     for (const attachment of data.attachments) {
+      uploadIndex++;
+      const currentIndex = uploadIndex;
+
       const uploadResponse = await httpClient.requestUpload({
         originalName: attachment.name,
         mimeType: attachment.blob.type,
         size: attachment.blob.size,
       });
 
-      await httpClient.uploadFileToS3(uploadResponse.url, uploadResponse.fields, attachment.blob);
+      await httpClient.uploadFileToS3(uploadResponse.url, uploadResponse.fields, attachment.blob, (percent) => {
+        this.widget?.setUploadProgress(currentIndex, totalUploads, percent);
+      });
 
       const attType = attachment.type === 'file' ? 'screenshot' : attachment.type;
       uploadedAttachments.push({
         fileId: uploadResponse.fileId,
         type: attType as 'screenshot' | 'recording' | 'voice_note' | 'session_replay',
-        metadata: attachment.annotations ? { annotations: attachment.annotations } : undefined,
+        metadata: attachment.textAnnotations ? { textAnnotations: attachment.textAnnotations } : undefined,
+      });
+    }
+
+    if (hasReplay) {
+      uploadIndex++;
+      const currentIndex = uploadIndex;
+
+      const replayBlob = new Blob([JSON.stringify(telemetry.sessionReplayEvents)], {
+        type: 'application/json',
+      });
+      const uploadResponse = await httpClient.requestUpload({
+        originalName: `session-replay-${Date.now()}.json`,
+        mimeType: 'application/json',
+        size: replayBlob.size,
+      });
+      await httpClient.uploadFileToS3(uploadResponse.url, uploadResponse.fields, replayBlob, (percent) => {
+        this.widget?.setUploadProgress(currentIndex, totalUploads, percent);
+      });
+      uploadedAttachments.push({
+        fileId: uploadResponse.fileId,
+        type: 'session_replay',
       });
     }
 

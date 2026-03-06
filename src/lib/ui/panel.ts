@@ -9,10 +9,23 @@ import {
   fileIcon,
   xSmallIcon,
   stopIcon,
+  arrowToolIcon,
+  boxToolIcon,
+  penToolIcon,
+  textToolIcon,
+  blurToolIcon,
+  undoIcon,
+  checkIcon,
 } from './icons';
 import { captureScreenshot } from '../capture/screenshot';
-import { AnnotationOverlay } from '../capture/annotation';
-import type { DrawOperation } from '../capture/annotation';
+import { AnnotationOverlay, renderOperationsToCanvas } from '../capture/annotation';
+import type { TextOperation } from '../capture/annotation';
+
+export interface TextAnnotationMeta {
+  text: string;
+  x: number;
+  y: number;
+}
 
 export interface Attachment {
   id: string;
@@ -20,7 +33,7 @@ export interface Attachment {
   blob: Blob;
   name: string;
   thumbnailUrl?: string;
-  annotations?: DrawOperation[];
+  textAnnotations?: TextAnnotationMeta[];
 }
 
 export interface PanelSubmitData {
@@ -47,6 +60,7 @@ interface PanelElements {
   successView: HTMLDivElement;
 }
 
+const MAX_ATTACHMENTS = 10;
 let attachmentIdCounter = 0;
 
 function generateAttachmentId(): string {
@@ -65,6 +79,7 @@ export class Panel {
   private reporterVisible = false;
   private annotationOverlay: AnnotationOverlay | null = null;
   private annotationContainer: HTMLDivElement | null = null;
+  private annotationStyleEl: HTMLStyleElement | null = null;
 
   private onSubmit: ((data: PanelSubmitData) => Promise<void>) | null = null;
   private onClose: (() => void) | null = null;
@@ -237,10 +252,12 @@ export class Panel {
 
   private async handleScreenshot(): Promise<void> {
     this.elements.screenshotBtn.disabled = true;
+    const originalContent = this.elements.screenshotBtn.innerHTML;
+    this.elements.screenshotBtn.innerHTML = `<span class="bd-spinner"></span> Capturing...`;
 
     try {
       this.hide();
-      await delay(100);
+      await delay(50);
 
       const result = await captureScreenshot({
         filter: (node) => {
@@ -255,10 +272,12 @@ export class Panel {
       const image = await loadImage(imageUrl);
 
       this.showAnnotationOverlay(image, result.blob, result.width, result.height);
-    } catch {
+    } catch (err) {
+      console.warn('[Bugdump] Screenshot capture failed:', err);
       this.show();
     } finally {
       this.elements.screenshotBtn.disabled = false;
+      this.elements.screenshotBtn.innerHTML = originalContent;
     }
   }
 
@@ -268,21 +287,35 @@ export class Panel {
     width: number,
     height: number,
   ): void {
+    this.annotationStyleEl = document.createElement('style');
+    this.annotationStyleEl.textContent = getAnnotationStyles();
+    document.head.appendChild(this.annotationStyleEl);
+
     this.annotationContainer = document.createElement('div');
     this.annotationContainer.className = 'bd-annotation-overlay';
 
     const toolbar = document.createElement('div');
     toolbar.className = 'bd-annotation-toolbar';
     toolbar.innerHTML = `
-      <button class="active" data-tool="arrow">Arrow</button>
-      <button data-tool="box">Box</button>
-      <button data-tool="freehand">Draw</button>
-      <button data-tool="text">Text</button>
-      <button data-tool="blur">Blur</button>
+      <div class="bd-annotation-toolbar__group">
+        <button class="bd-annotation-tool-btn active" data-tool="arrow" title="Arrow">${arrowToolIcon()}</button>
+        <button class="bd-annotation-tool-btn" data-tool="box" title="Rectangle">${boxToolIcon()}</button>
+        <button class="bd-annotation-tool-btn" data-tool="freehand" title="Draw">${penToolIcon()}</button>
+        <button class="bd-annotation-tool-btn" data-tool="text" title="Text">${textToolIcon()}</button>
+        <button class="bd-annotation-tool-btn" data-tool="blur" title="Blur">${blurToolIcon()}</button>
+      </div>
+      <div class="bd-annotation-toolbar__colors">
+        <button class="bd-annotation-color-btn active" data-color="#ff0000" style="background:#ff0000" title="Red"></button>
+        <button class="bd-annotation-color-btn" data-color="#ffcc00" style="background:#ffcc00" title="Yellow"></button>
+        <button class="bd-annotation-color-btn" data-color="#00cc44" style="background:#00cc44" title="Green"></button>
+        <button class="bd-annotation-color-btn" data-color="#0099ff" style="background:#0099ff" title="Blue"></button>
+        <button class="bd-annotation-color-btn" data-color="#ffffff" style="background:#ffffff" title="White"></button>
+      </div>
       <div class="bd-annotation-toolbar__spacer"></div>
-      <button data-annotation-action="undo">Undo</button>
-      <button class="bd-annotation-toolbar__cancel" data-annotation-action="cancel">Cancel</button>
-      <button class="bd-annotation-toolbar__confirm" data-annotation-action="confirm">Done</button>
+      <button class="bd-annotation-action-btn" data-annotation-action="undo" title="Undo">${undoIcon()}</button>
+      <div class="bd-annotation-toolbar__divider"></div>
+      <button class="bd-annotation-toolbar__cancel" data-annotation-action="cancel">${closeIcon()} Cancel</button>
+      <button class="bd-annotation-toolbar__confirm" data-annotation-action="confirm">${checkIcon()} Done</button>
     `;
 
     const canvasWrap = document.createElement('div');
@@ -308,6 +341,14 @@ export class Panel {
         return;
       }
 
+      const color = btn.dataset.color;
+      if (color) {
+        this.annotationOverlay?.setColor(color);
+        toolbar.querySelectorAll<HTMLButtonElement>('[data-color]').forEach((b) => b.classList.remove('active'));
+        btn.classList.add('active');
+        return;
+      }
+
       const action = btn.dataset.annotationAction;
       if (action === 'undo') {
         this.annotationOverlay?.undo();
@@ -321,17 +362,50 @@ export class Panel {
     });
   }
 
-  private finishAnnotation(originalBlob: Blob, image: HTMLImageElement): void {
-    const annotations = this.annotationOverlay?.getOperations() ?? [];
+  private async finishAnnotation(originalBlob: Blob, image: HTMLImageElement): Promise<void> {
+    const operations = this.annotationOverlay?.getOperations() ?? [];
 
-    const thumbnailUrl = URL.createObjectURL(originalBlob);
+    let blob: Blob;
+    let textAnnotations: TextAnnotationMeta[] | undefined;
+
+    if (operations.length > 0) {
+      const canvas = document.createElement('canvas');
+      canvas.width = image.naturalWidth;
+      canvas.height = image.naturalHeight;
+      const ctx = canvas.getContext('2d')!;
+      ctx.drawImage(image, 0, 0);
+
+      const scaleX = image.naturalWidth / this.annotationOverlay!.getCanvasWidth();
+      const scaleY = image.naturalHeight / this.annotationOverlay!.getCanvasHeight();
+      ctx.save();
+      ctx.scale(scaleX, scaleY);
+      renderOperationsToCanvas(ctx, operations);
+      ctx.restore();
+
+      blob = await new Promise<Blob>((resolve) => {
+        canvas.toBlob((b) => resolve(b!), 'image/jpeg', 0.92);
+      });
+
+      const textOps = operations.filter((op): op is TextOperation => op.tool === 'text');
+      if (textOps.length > 0) {
+        textAnnotations = textOps.map((op) => ({
+          text: op.text,
+          x: Math.round(op.position.x),
+          y: Math.round(op.position.y),
+        }));
+      }
+    } else {
+      blob = originalBlob;
+    }
+
+    const thumbnailUrl = URL.createObjectURL(blob);
     this.addAttachment({
       id: generateAttachmentId(),
       type: 'screenshot',
-      blob: originalBlob,
+      blob,
       name: `screenshot-${Date.now()}.jpg`,
       thumbnailUrl,
-      annotations: annotations.length > 0 ? annotations : undefined,
+      textAnnotations,
     });
 
     URL.revokeObjectURL(image.src);
@@ -344,6 +418,8 @@ export class Panel {
     this.annotationOverlay = null;
     this.annotationContainer?.remove();
     this.annotationContainer = null;
+    this.annotationStyleEl?.remove();
+    this.annotationStyleEl = null;
   }
 
   private async handleRecord(): Promise<void> {
@@ -356,7 +432,8 @@ export class Panel {
       this.mediaStream = await navigator.mediaDevices.getDisplayMedia({
         video: true,
         audio: false,
-      });
+        preferCurrentTab: true,
+      } as DisplayMediaStreamOptions);
 
       this.recordedChunks = [];
       this.mediaRecorder = new MediaRecorder(this.mediaStream, {
@@ -442,6 +519,7 @@ export class Panel {
   }
 
   private addAttachment(attachment: Attachment): void {
+    if (this.attachments.length >= MAX_ATTACHMENTS) return;
     this.attachments.push(attachment);
     this.renderAttachments();
   }
@@ -500,6 +578,12 @@ export class Panel {
     this.elements.reporterFields.classList.toggle('bd-reporter-fields--visible', this.reporterVisible);
   }
 
+  setUploadProgress(current: number, total: number, filePercent: number): void {
+    if (total === 0) return;
+    const overallPercent = Math.round(((current - 1 + filePercent / 100) / total) * 100);
+    this.elements.sendBtn.innerHTML = `<span class="bd-spinner"></span> Uploading ${current}/${total}… ${overallPercent}%`;
+  }
+
   private setSubmitting(submitting: boolean): void {
     this.submitting = submitting;
     this.elements.sendBtn.disabled = submitting;
@@ -554,4 +638,196 @@ function getSupportedMimeType(): string {
     }
   }
   return 'video/webm';
+}
+
+function getAnnotationStyles(): string {
+  return `
+    .bd-annotation-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 2147483647;
+      background: rgba(0, 0, 0, 0.6);
+      display: flex;
+      flex-direction: column;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    }
+
+    .bd-annotation-toolbar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 16px;
+      background: #1a1a2e;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    }
+
+    .bd-annotation-toolbar__group {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      background: rgba(255, 255, 255, 0.06);
+      border-radius: 8px;
+      padding: 3px;
+    }
+
+    .bd-annotation-tool-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 36px;
+      height: 36px;
+      padding: 0;
+      background: transparent;
+      color: rgba(255, 255, 255, 0.7);
+      border: 2px solid transparent;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .bd-annotation-tool-btn svg {
+      width: 18px;
+      height: 18px;
+    }
+
+    .bd-annotation-tool-btn:hover {
+      color: #ffffff;
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    .bd-annotation-tool-btn.active {
+      color: #ffffff;
+      background: rgba(99, 102, 241, 0.5);
+      border-color: rgba(99, 102, 241, 0.8);
+    }
+
+    .bd-annotation-toolbar__colors {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 0 8px;
+    }
+
+    .bd-annotation-color-btn {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      border: 2px solid rgba(255, 255, 255, 0.2);
+      cursor: pointer;
+      padding: 0;
+      transition: transform 0.15s ease, border-color 0.15s ease;
+    }
+
+    .bd-annotation-color-btn:hover {
+      transform: scale(1.2);
+      border-color: rgba(255, 255, 255, 0.5);
+    }
+
+    .bd-annotation-color-btn.active {
+      border-color: #ffffff;
+      transform: scale(1.15);
+      box-shadow: 0 0 6px rgba(255, 255, 255, 0.3);
+    }
+
+    .bd-annotation-toolbar__spacer {
+      flex: 1;
+    }
+
+    .bd-annotation-action-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 36px;
+      height: 36px;
+      padding: 0;
+      background: transparent;
+      color: rgba(255, 255, 255, 0.7);
+      border: 1px solid transparent;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .bd-annotation-action-btn svg {
+      width: 18px;
+      height: 18px;
+    }
+
+    .bd-annotation-action-btn:hover {
+      color: #ffffff;
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    .bd-annotation-toolbar__divider {
+      width: 1px;
+      height: 24px;
+      background: rgba(255, 255, 255, 0.15);
+      margin: 0 4px;
+    }
+
+    .bd-annotation-toolbar__cancel {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 14px;
+      background: transparent;
+      color: rgba(255, 255, 255, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 500;
+      font-family: inherit;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .bd-annotation-toolbar__cancel svg {
+      width: 14px;
+      height: 14px;
+    }
+
+    .bd-annotation-toolbar__cancel:hover {
+      color: #ffffff;
+      background: rgba(255, 255, 255, 0.08);
+      border-color: rgba(255, 255, 255, 0.3);
+    }
+
+    .bd-annotation-toolbar__confirm {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 16px;
+      background: #22c55e;
+      color: #ffffff;
+      border: none;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      transition: background-color 0.15s ease;
+    }
+
+    .bd-annotation-toolbar__confirm svg {
+      width: 14px;
+      height: 14px;
+    }
+
+    .bd-annotation-toolbar__confirm:hover {
+      background: #16a34a;
+    }
+
+    .bd-annotation-canvas-wrap {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      position: relative;
+    }
+  `;
 }

@@ -1,6 +1,8 @@
 export interface BugdumpConfig {
   projectKey: string;
   endpoint?: string;
+  captureNetworkBodies?: boolean;
+  hideButton?: boolean;
 }
 
 export interface BugdumpUserContext {
@@ -24,7 +26,7 @@ export interface ReportPayload {
   networkRequests?: Record<string, unknown>[];
   performance?: Record<string, unknown>;
   customContext?: Record<string, unknown>;
-  annotations?: Record<string, unknown>[];
+  textAnnotations?: Array<{ text: string; x: number; y: number }>;
   attachments?: Array<{
     fileId: string;
     type: 'screenshot' | 'recording' | 'voice_note' | 'session_replay';

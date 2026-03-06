@@ -28,25 +28,30 @@ export type {
   BlurOperation,
   FreehandOperation,
 } from './lib/capture';
-export type { Attachment, PanelSubmitData } from './lib/ui/panel';
+export type { Attachment, TextAnnotationMeta, PanelSubmitData } from './lib/ui/panel';
 
-// Auto-init: detect <script data-project="..."> and initialize automatically
+// Auto-init: detect <script data-api-key="..."> and initialize automatically
 if (typeof document !== 'undefined') {
   const currentScript =
     document.currentScript ||
     (() => {
-      const scripts = document.querySelectorAll('script[data-project]');
+      const scripts = document.querySelectorAll('script[data-api-key]');
       return scripts[scripts.length - 1] as HTMLScriptElement | null;
     })();
 
   if (currentScript) {
-    const projectKey = (currentScript as HTMLElement).getAttribute('data-project');
-    const endpoint = (currentScript as HTMLElement).getAttribute('data-endpoint');
+    const el = currentScript as HTMLElement;
+    const projectKey = el.getAttribute('data-api-key');
+    const endpoint = el.getAttribute('data-api-url');
+    const captureNetworkBodies = el.getAttribute('data-capture-network-bodies') === 'true';
+    const hideButton = el.getAttribute('data-hide-button') === 'true';
 
     if (projectKey) {
       Bugdump.init({
         projectKey,
         ...(endpoint && { endpoint }),
+        ...(captureNetworkBodies && { captureNetworkBodies }),
+        ...(hideButton && { hideButton }),
       });
     }
   }

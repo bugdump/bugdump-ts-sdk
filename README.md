@@ -9,7 +9,7 @@ Official TypeScript SDK for [Bugdump](https://bugdump.com) - embed a bug reporti
 - **Screenshot annotations** - Users can draw, highlight, and blur parts of screenshots
 - **TypeScript-first** - Full type definitions out of the box
 - **Shadow DOM isolated** - Widget styles never leak into your app
-- **Auto-init** - Single script tag with `data-project`, no JS required
+- **Auto-init** - Single script tag with `data-api-key`, no JS required
 
 ## Installation
 
@@ -18,7 +18,7 @@ Official TypeScript SDK for [Bugdump](https://bugdump.com) - embed a bug reporti
 Drop a single line into your HTML — the widget initializes automatically:
 
 ```html
-<script src="https://bugdump.com/sdk/latest.js" data-project="your-project-key"></script>
+<script src="https://bugdump.com/sdk/latest.js" data-api-key="your-api-key"></script>
 ```
 
 That's it. A floating bug report button will appear on your page.
@@ -55,6 +55,62 @@ const bugdump = Bugdump.init({
 | Option | Type | Required | Description |
 |---|---|---|---|
 | `projectKey` | `string` | Yes | Your Bugdump project key |
+| `hideButton` | `boolean` | No | Hide the floating button and trigger the widget programmatically |
+
+## Headless Mode (No Floating Button)
+
+Hide the default floating button and trigger the report form from your own UI:
+
+### npm
+
+```typescript
+import { Bugdump } from '@bugdump/sdk';
+
+const bugdump = Bugdump.init({
+  projectKey: 'your-project-key',
+  hideButton: true,
+});
+
+// Open from your own button, menu item, keyboard shortcut, etc.
+document.getElementById('my-report-btn')?.addEventListener('click', () => {
+  bugdump.open();
+});
+```
+
+### Script Tag
+
+```html
+<script src="https://bugdump.com/sdk/latest.js" data-api-key="your-api-key" data-hide-button="true"></script>
+<script>
+  document.getElementById('my-report-btn').addEventListener('click', function () {
+    Bugdump.getInstance().open();
+  });
+</script>
+```
+
+### React example
+
+```tsx
+import { useEffect, useCallback } from 'react';
+import { Bugdump } from '@bugdump/sdk';
+
+function App() {
+  useEffect(() => {
+    const bugdump = Bugdump.init({
+      projectKey: 'your-project-key',
+      hideButton: true,
+    });
+
+    return () => bugdump.destroy();
+  }, []);
+
+  const openReportForm = useCallback(() => {
+    Bugdump.getInstance()?.open();
+  }, []);
+
+  return <button onClick={openReportForm}>Report a Bug</button>;
+}
+```
 
 ## Identify Users
 
@@ -66,6 +122,98 @@ bugdump.identify({
   name: 'Jane Doe',
   email: 'jane@example.com',
 });
+```
+
+## Restrict to Authenticated Users Only
+
+By default, anyone visiting your site can submit bug reports. If you want to allow only your registered (logged-in) users to report bugs, initialize the SDK **after** authentication and call `identify()` with the user's info.
+
+### npm
+
+```typescript
+import { Bugdump } from '@bugdump/sdk';
+
+// Initialize only after the user has logged in
+function onUserLogin(user: { id: string; name: string; email: string }) {
+  const bugdump = Bugdump.init({
+    projectKey: 'your-project-key',
+  });
+
+  bugdump.identify({
+    id: user.id,
+    name: user.name,
+    email: user.email,
+  });
+}
+
+// Clean up on logout
+function onUserLogout() {
+  Bugdump.getInstance()?.destroy();
+}
+```
+
+#### React example
+
+```tsx
+import { useEffect } from 'react';
+import { Bugdump } from '@bugdump/sdk';
+
+function App() {
+  const user = useAuth(); // your auth hook
+
+  useEffect(() => {
+    if (!user) return;
+
+    const bugdump = Bugdump.init({
+      projectKey: 'your-project-key',
+    });
+
+    bugdump.identify({
+      id: user.id,
+      name: user.name,
+      email: user.email,
+    });
+
+    return () => {
+      bugdump.destroy();
+    };
+  }, [user]);
+
+  return <div>{/* your app */}</div>;
+}
+```
+
+### Script Tag
+
+When using the `<script>` tag, **do not** use the `data-api-key` attribute (which auto-initializes the widget for everyone). Instead, load the script without auto-init and initialize manually after authentication:
+
+```html
+<!-- Load the SDK without auto-init (no data-api-key) -->
+<script src="https://bugdump.com/sdk/latest.js"></script>
+
+<script>
+  // Call this after your user has logged in
+  function initBugdump(user) {
+    var bugdump = Bugdump.init({ projectKey: 'your-project-key' });
+
+    bugdump.identify({
+      id: user.id,
+      name: user.name,
+      email: user.email,
+    });
+  }
+
+  // Call this on logout
+  function destroyBugdump() {
+    var instance = Bugdump.getInstance();
+    if (instance) instance.destroy();
+  }
+
+  // Example: init after your app confirms the user is authenticated
+  if (window.currentUser) {
+    initBugdump(window.currentUser);
+  }
+</script>
 ```
 
 ## Custom Context

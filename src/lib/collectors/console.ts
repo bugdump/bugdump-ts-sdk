@@ -59,6 +59,10 @@ export class ConsoleCollector {
       if (arg === null || arg === undefined) return arg;
       if (typeof arg === 'string' || typeof arg === 'number' || typeof arg === 'boolean') return arg;
 
+      if (arg instanceof Error) {
+        return { name: arg.name, message: arg.message, stack: arg.stack };
+      }
+
       try {
         return JSON.parse(JSON.stringify(arg, this.circularReplacer()));
       } catch {

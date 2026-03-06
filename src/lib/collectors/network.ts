@@ -5,12 +5,19 @@ export interface NetworkRequestEntry {
   statusText: string | null;
   requestHeaders: Record<string, string>;
   responseHeaders: Record<string, string>;
+  requestBody: string | null;
+  responseBody: string | null;
   duration: number | null;
   startedAt: number;
   error: string | null;
 }
 
+export interface NetworkCollectorOptions {
+  captureBodies?: boolean;
+}
+
 const MAX_ENTRIES = 30;
+const MAX_BODY_SIZE = 32_768;
 
 export class NetworkCollector {
   private buffer: NetworkRequestEntry[] = [];
@@ -18,6 +25,11 @@ export class NetworkCollector {
   private originalXhrOpen: typeof XMLHttpRequest.prototype.open | null = null;
   private originalXhrSend: typeof XMLHttpRequest.prototype.send | null = null;
   private active = false;
+  private options: NetworkCollectorOptions;
+
+  constructor(options: NetworkCollectorOptions = {}) {
+    this.options = options;
+  }
 
   start(): void {
     if (this.active) return;
@@ -55,9 +67,22 @@ export class NetworkCollector {
       const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
       const startedAt = Date.now();
       const requestHeaders = self.extractHeaders(init?.headers);
+      const requestBody = self.options.captureBodies ? self.serializeBody(init?.body) : null;
 
       try {
         const response = await self.originalFetch!.call(window, input, init);
+        let responseBody: string | null = null;
+
+        if (self.options.captureBodies) {
+          try {
+            const cloned = response.clone();
+            const text = await cloned.text();
+            responseBody = self.truncateBody(text);
+          } catch {
+            // ignore - body may not be readable
+          }
+        }
+
         self.push({
           method,
           url,
@@ -65,6 +90,8 @@ export class NetworkCollector {
           statusText: response.statusText,
           requestHeaders,
           responseHeaders: self.extractHeaders(response.headers),
+          requestBody,
+          responseBody,
           duration: Date.now() - startedAt,
           startedAt,
           error: null,
@@ -78,6 +105,8 @@ export class NetworkCollector {
           statusText: null,
           requestHeaders,
           responseHeaders: {},
+          requestBody,
+          responseBody: null,
           duration: Date.now() - startedAt,
           startedAt,
           error: err instanceof Error ? err.message : String(err),
@@ -116,8 +145,18 @@ export class NetworkCollector {
       const startedAt = Date.now();
       const method = this.__bd_method || 'GET';
       const url = this.__bd_url || '';
+      const requestBody = self.options.captureBodies ? self.serializeBody(body) : null;
 
       const onDone = () => {
+        let responseBody: string | null = null;
+        if (self.options.captureBodies) {
+          try {
+            responseBody = self.truncateBody(this.responseText);
+          } catch {
+            // ignore - responseText may not be available for non-text responses
+          }
+        }
+
         self.push({
           method,
           url,
@@ -125,6 +164,8 @@ export class NetworkCollector {
           statusText: this.statusText || null,
           requestHeaders: {},
           responseHeaders: self.parseXhrResponseHeaders(this.getAllResponseHeaders()),
+          requestBody,
+          responseBody,
           duration: Date.now() - startedAt,
           startedAt,
           error: this.status === 0 ? 'Network error' : null,
@@ -166,6 +207,30 @@ export class NetworkCollector {
       }
     }
     return result;
+  }
+
+  private serializeBody(body: unknown): string | null {
+    if (body == null) return null;
+    if (typeof body === 'string') return this.truncateBody(body);
+    if (body instanceof URLSearchParams) return this.truncateBody(body.toString());
+    if (body instanceof FormData) {
+      const parts: string[] = [];
+      body.forEach((value, key) => {
+        parts.push(`${key}=${value instanceof File ? `[File: ${value.name}]` : value}`);
+      });
+      return this.truncateBody(parts.join('&'));
+    }
+    if (body instanceof ArrayBuffer || body instanceof Blob) return `[Binary: ${body instanceof Blob ? body.size : body.byteLength} bytes]`;
+    try {
+      return this.truncateBody(JSON.stringify(body));
+    } catch {
+      return null;
+    }
+  }
+
+  private truncateBody(text: string): string {
+    if (text.length <= MAX_BODY_SIZE) return text;
+    return text.slice(0, MAX_BODY_SIZE) + '…[truncated]';
   }
 
   private parseXhrResponseHeaders(raw: string): Record<string, string> {

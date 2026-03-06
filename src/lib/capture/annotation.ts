@@ -310,6 +310,14 @@ export class AnnotationOverlay {
     return [...this.operations];
   }
 
+  getCanvasWidth(): number {
+    return this.width;
+  }
+
+  getCanvasHeight(): number {
+    return this.height;
+  }
+
   undo(): void {
     this.operations.pop();
     this.redraw();
