@@ -1,6 +1,6 @@
 import type { BugdumpConfig } from '../types';
 
-const DEFAULT_ENDPOINT = 'https://api.bugdump.io';
+const DEFAULT_ENDPOINT = 'https://api.bugdump.com';
 
 export function resolveConfig(config: BugdumpConfig): Required<BugdumpConfig> {
   return {

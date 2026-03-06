@@ -9,9 +9,21 @@ Official TypeScript SDK for [Bugdump](https://bugdump.com) - embed a bug reporti
 - **Screenshot annotations** - Users can draw, highlight, and blur parts of screenshots
 - **TypeScript-first** - Full type definitions out of the box
 - **Shadow DOM isolated** - Widget styles never leak into your app
-- **IIFE bundle** - Drop a `<script>` tag and go, no build step required
+- **Auto-init** - Single script tag with `data-project`, no JS required
 
 ## Installation
+
+### Script Tag (Recommended)
+
+Drop a single line into your HTML — the widget initializes automatically:
+
+```html
+<script src="https://bugdump.com/sdk/widget.js" data-project="your-project-key"></script>
+```
+
+That's it. A floating bug report button will appear on your page.
+
+### npm
 
 ```bash
 npm install @bugdump/sdk
@@ -21,17 +33,6 @@ pnpm add @bugdump/sdk
 yarn add @bugdump/sdk
 ```
 
-Or via `<script>` tag (IIFE):
-
-```html
-<script src="https://unpkg.com/@bugdump/sdk/dist/index.global.js"></script>
-<script>
-  Bugdump.Bugdump.init({ projectKey: 'your-project-key' });
-</script>
-```
-
-## Quick Start
-
 ```typescript
 import { Bugdump } from '@bugdump/sdk';
 
@@ -40,21 +41,20 @@ const bugdump = Bugdump.init({
 });
 ```
 
-That's it — a floating bug report button will appear on your page.
+### Manual IIFE (without auto-init)
+
+```html
+<script src="https://bugdump.com/sdk/widget.js"></script>
+<script>
+  Bugdump.init({ projectKey: 'your-project-key' });
+</script>
+```
 
 ## Configuration
-
-```typescript
-const bugdump = Bugdump.init({
-  projectKey: 'your-project-key',
-  endpoint: 'https://api.bugdump.com', // optional, custom API endpoint
-});
-```
 
 | Option | Type | Required | Description |
 |---|---|---|---|
 | `projectKey` | `string` | Yes | Your Bugdump project key |
-| `endpoint` | `string` | No | Custom API endpoint URL |
 
 ## Identify Users
 
