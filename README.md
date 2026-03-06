@@ -18,7 +18,7 @@ Official TypeScript SDK for [Bugdump](https://bugdump.com) - embed a bug reporti
 Drop a single line into your HTML — the widget initializes automatically:
 
 ```html
-<script src="https://bugdump.com/sdk/widget.js" data-project="your-project-key"></script>
+<script src="https://bugdump.com/sdk/latest.js" data-project="your-project-key"></script>
 ```
 
 That's it. A floating bug report button will appear on your page.
@@ -44,7 +44,7 @@ const bugdump = Bugdump.init({
 ### Manual IIFE (without auto-init)
 
 ```html
-<script src="https://bugdump.com/sdk/widget.js"></script>
+<script src="https://bugdump.com/sdk/latest.js"></script>
 <script>
   Bugdump.init({ projectKey: 'your-project-key' });
 </script>
