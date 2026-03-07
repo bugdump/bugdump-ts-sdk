@@ -1,28 +1,62 @@
-const COLORS = {
-  primary: '#6366f1',
-  primaryHover: '#4f46e5',
-  primaryText: '#ffffff',
-  bg: '#ffffff',
-  bgSecondary: '#f9fafb',
-  bgHover: '#f3f4f6',
-  border: '#e5e7eb',
-  borderFocus: '#6366f1',
-  text: '#111827',
-  textSecondary: '#6b7280',
-  textMuted: '#9ca3af',
-  danger: '#ef4444',
-  dangerHover: '#dc2626',
-  overlay: 'rgba(0, 0, 0, 0.5)',
-  shadow: 'rgba(0, 0, 0, 0.15)',
-  shadowLight: 'rgba(0, 0, 0, 0.08)',
-};
-
 export function createStyles(): string {
   return `
     * {
       box-sizing: border-box;
       margin: 0;
       padding: 0;
+    }
+
+    :host {
+      --bd-primary: #6366f1;
+      --bd-primary-hover: #4f46e5;
+      --bd-primary-text: #ffffff;
+      --bd-bg: #ffffff;
+      --bd-bg-secondary: #f9fafb;
+      --bd-bg-hover: #f3f4f6;
+      --bd-border: #e5e7eb;
+      --bd-border-focus: #6366f1;
+      --bd-text: #111827;
+      --bd-text-secondary: #6b7280;
+      --bd-text-muted: #9ca3af;
+      --bd-danger: #ef4444;
+      --bd-danger-hover: #dc2626;
+      --bd-shadow: rgba(0, 0, 0, 0.15);
+      --bd-shadow-light: rgba(0, 0, 0, 0.08);
+      --bd-error-bg: #fef2f2;
+      --bd-error-text: #dc2626;
+      --bd-error-border: #fecaca;
+    }
+
+    :host(.bd-theme-dark) {
+      --bd-bg: #1a1a2e;
+      --bd-bg-secondary: #16162a;
+      --bd-bg-hover: #232340;
+      --bd-border: #2d2d50;
+      --bd-text: #e5e7eb;
+      --bd-text-secondary: #9ca3af;
+      --bd-text-muted: #6b7280;
+      --bd-shadow: rgba(0, 0, 0, 0.4);
+      --bd-shadow-light: rgba(0, 0, 0, 0.2);
+      --bd-error-bg: #2d1b1b;
+      --bd-error-text: #f87171;
+      --bd-error-border: #5c2020;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :host(.bd-theme-auto) {
+        --bd-bg: #1a1a2e;
+        --bd-bg-secondary: #16162a;
+        --bd-bg-hover: #232340;
+        --bd-border: #2d2d50;
+        --bd-text: #e5e7eb;
+        --bd-text-secondary: #9ca3af;
+        --bd-text-muted: #6b7280;
+        --bd-shadow: rgba(0, 0, 0, 0.4);
+        --bd-shadow-light: rgba(0, 0, 0, 0.2);
+        --bd-error-bg: #2d1b1b;
+        --bd-error-text: #f87171;
+        --bd-error-border: #5c2020;
+      }
     }
 
     .bd-trigger {
@@ -32,23 +66,23 @@ export function createStyles(): string {
       width: 56px;
       height: 56px;
       border-radius: 50%;
-      background: ${COLORS.primary};
-      color: ${COLORS.primaryText};
+      background: var(--bd-primary);
+      color: var(--bd-primary-text);
       border: none;
       cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
-      box-shadow: 0 4px 12px ${COLORS.shadow};
+      box-shadow: 0 4px 12px var(--bd-shadow);
       transition: background-color 0.2s, transform 0.2s, box-shadow 0.2s;
       z-index: 2147483647;
       outline: none;
     }
 
     .bd-trigger:hover {
-      background: ${COLORS.primaryHover};
+      background: var(--bd-primary-hover);
       transform: scale(1.05);
-      box-shadow: 0 6px 16px ${COLORS.shadow};
+      box-shadow: 0 6px 16px var(--bd-shadow);
     }
 
     .bd-trigger:active {
@@ -71,9 +105,9 @@ export function createStyles(): string {
       right: 20px;
       width: 380px;
       max-height: calc(100vh - 120px);
-      background: ${COLORS.bg};
+      background: var(--bd-bg);
       border-radius: 16px;
-      box-shadow: 0 8px 32px ${COLORS.shadow}, 0 2px 8px ${COLORS.shadowLight};
+      box-shadow: 0 8px 32px var(--bd-shadow), 0 2px 8px var(--bd-shadow-light);
       display: flex;
       flex-direction: column;
       overflow: hidden;
@@ -85,7 +119,7 @@ export function createStyles(): string {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
       font-size: 14px;
       line-height: 1.5;
-      color: ${COLORS.text};
+      color: var(--bd-text);
     }
 
     .bd-panel--visible {
@@ -99,21 +133,21 @@ export function createStyles(): string {
       align-items: center;
       justify-content: space-between;
       padding: 16px 20px;
-      border-bottom: 1px solid ${COLORS.border};
-      background: ${COLORS.bgSecondary};
+      border-bottom: 1px solid var(--bd-border);
+      background: var(--bd-bg-secondary);
     }
 
     .bd-panel__title {
       font-size: 16px;
       font-weight: 600;
-      color: ${COLORS.text};
+      color: var(--bd-text);
     }
 
     .bd-panel__close {
       background: none;
       border: none;
       cursor: pointer;
-      color: ${COLORS.textSecondary};
+      color: var(--bd-text-secondary);
       padding: 4px;
       border-radius: 6px;
       display: flex;
@@ -123,8 +157,8 @@ export function createStyles(): string {
     }
 
     .bd-panel__close:hover {
-      color: ${COLORS.text};
-      background: ${COLORS.bgHover};
+      color: var(--bd-text);
+      background: var(--bd-bg-hover);
     }
 
     .bd-panel__close svg {
@@ -145,24 +179,24 @@ export function createStyles(): string {
       width: 100%;
       min-height: 100px;
       padding: 10px 12px;
-      border: 1px solid ${COLORS.border};
+      border: 1px solid var(--bd-border);
       border-radius: 8px;
       resize: vertical;
       font-family: inherit;
       font-size: 14px;
       line-height: 1.5;
-      color: ${COLORS.text};
-      background: ${COLORS.bg};
+      color: var(--bd-text);
+      background: var(--bd-bg);
       outline: none;
       transition: border-color 0.15s;
     }
 
     .bd-textarea::placeholder {
-      color: ${COLORS.textMuted};
+      color: var(--bd-text-muted);
     }
 
     .bd-textarea:focus {
-      border-color: ${COLORS.borderFocus};
+      border-color: var(--bd-border-focus);
     }
 
     .bd-action-bar {
@@ -176,10 +210,10 @@ export function createStyles(): string {
       align-items: center;
       gap: 6px;
       padding: 6px 10px;
-      border: 1px solid ${COLORS.border};
+      border: 1px solid var(--bd-border);
       border-radius: 6px;
-      background: ${COLORS.bg};
-      color: ${COLORS.textSecondary};
+      background: var(--bd-bg);
+      color: var(--bd-text-secondary);
       font-size: 13px;
       font-family: inherit;
       cursor: pointer;
@@ -187,9 +221,9 @@ export function createStyles(): string {
     }
 
     .bd-action-btn:hover {
-      color: ${COLORS.text};
-      border-color: ${COLORS.textSecondary};
-      background: ${COLORS.bgSecondary};
+      color: var(--bd-text);
+      border-color: var(--bd-text-secondary);
+      background: var(--bd-bg-secondary);
     }
 
     .bd-action-btn:disabled {
@@ -215,8 +249,8 @@ export function createStyles(): string {
       height: 64px;
       border-radius: 8px;
       overflow: hidden;
-      border: 1px solid ${COLORS.border};
-      background: ${COLORS.bgSecondary};
+      border: 1px solid var(--bd-border);
+      background: var(--bd-bg-secondary);
     }
 
     .bd-attachment img,
@@ -232,7 +266,7 @@ export function createStyles(): string {
       display: flex;
       align-items: center;
       justify-content: center;
-      color: ${COLORS.textSecondary};
+      color: var(--bd-text-secondary);
     }
 
     .bd-attachment__icon svg {
@@ -247,9 +281,9 @@ export function createStyles(): string {
       width: 20px;
       height: 20px;
       border-radius: 50%;
-      background: ${COLORS.danger};
-      color: ${COLORS.primaryText};
-      border: 2px solid ${COLORS.bg};
+      background: var(--bd-danger);
+      color: var(--bd-primary-text);
+      border: 2px solid var(--bd-bg);
       cursor: pointer;
       display: flex;
       align-items: center;
@@ -261,7 +295,7 @@ export function createStyles(): string {
     }
 
     .bd-attachment__remove:hover {
-      background: ${COLORS.dangerHover};
+      background: var(--bd-danger-hover);
     }
 
     .bd-attachment__remove svg {
@@ -278,13 +312,13 @@ export function createStyles(): string {
       cursor: pointer;
       font-size: 13px;
       font-family: inherit;
-      color: ${COLORS.textSecondary};
+      color: var(--bd-text-secondary);
       padding: 0;
       transition: color 0.15s;
     }
 
     .bd-reporter-toggle:hover {
-      color: ${COLORS.text};
+      color: var(--bd-text);
     }
 
     .bd-reporter-toggle svg {
@@ -311,30 +345,43 @@ export function createStyles(): string {
     .bd-input {
       width: 100%;
       padding: 8px 12px;
-      border: 1px solid ${COLORS.border};
+      border: 1px solid var(--bd-border);
       border-radius: 8px;
       font-family: inherit;
       font-size: 14px;
-      color: ${COLORS.text};
-      background: ${COLORS.bg};
+      color: var(--bd-text);
+      background: var(--bd-bg);
       outline: none;
       transition: border-color 0.15s;
     }
 
     .bd-input::placeholder {
-      color: ${COLORS.textMuted};
+      color: var(--bd-text-muted);
     }
 
     .bd-input:focus {
-      border-color: ${COLORS.borderFocus};
+      border-color: var(--bd-border-focus);
     }
 
     .bd-panel__footer {
       padding: 12px 20px;
-      border-top: 1px solid ${COLORS.border};
+      border-top: 1px solid var(--bd-border);
       display: flex;
-      justify-content: flex-end;
+      align-items: center;
       gap: 8px;
+    }
+
+    .bd-branding {
+      font-size: 11px;
+      color: var(--bd-text-secondary);
+      text-decoration: none;
+      margin-right: auto;
+      opacity: 0.6;
+      transition: opacity 0.15s ease;
+    }
+
+    .bd-branding:hover {
+      opacity: 1;
     }
 
     .bd-send-btn {
@@ -342,8 +389,8 @@ export function createStyles(): string {
       align-items: center;
       gap: 6px;
       padding: 8px 20px;
-      background: ${COLORS.primary};
-      color: ${COLORS.primaryText};
+      background: var(--bd-primary);
+      color: var(--bd-primary-text);
       border: none;
       border-radius: 8px;
       font-size: 14px;
@@ -354,7 +401,7 @@ export function createStyles(): string {
     }
 
     .bd-send-btn:hover {
-      background: ${COLORS.primaryHover};
+      background: var(--bd-primary-hover);
     }
 
     .bd-send-btn:disabled {
@@ -390,13 +437,13 @@ export function createStyles(): string {
 
     .bd-success__subtitle {
       font-size: 14px;
-      color: ${COLORS.textSecondary};
+      color: var(--bd-text-secondary);
     }
 
     .bd-spinner {
       width: 20px;
       height: 20px;
-      border: 2px solid ${COLORS.primaryText};
+      border: 2px solid var(--bd-primary-text);
       border-top-color: transparent;
       border-radius: 50%;
       animation: bd-spin 0.6s linear infinite;
@@ -408,6 +455,16 @@ export function createStyles(): string {
 
     .bd-file-input {
       display: none;
+    }
+
+    .bd-error {
+      padding: 8px 12px;
+      background: var(--bd-error-bg);
+      color: var(--bd-error-text);
+      border: 1px solid var(--bd-error-border);
+      border-radius: 8px;
+      font-size: 13px;
+      line-height: 1.4;
     }
 
     @media (max-width: 440px) {

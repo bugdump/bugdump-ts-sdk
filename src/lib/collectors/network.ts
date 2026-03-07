@@ -45,6 +45,10 @@ export class NetworkCollector {
     this.restoreXhr();
   }
 
+  snapshot(): NetworkRequestEntry[] {
+    return [...this.buffer];
+  }
+
   flush(): NetworkRequestEntry[] {
     const entries = [...this.buffer];
     this.buffer = [];

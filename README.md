@@ -52,10 +52,136 @@ const bugdump = Bugdump.init({
 
 ## Configuration
 
-| Option | Type | Required | Description |
+### npm
+
+```typescript
+const bugdump = Bugdump.init({
+  projectKey: 'your-project-key',
+  endpoint: 'https://api.bugdump.com',  // Custom API endpoint
+  theme: 'auto',                         // Widget color theme
+  hideButton: false,                      // Hide the floating button
+  captureNetworkBodies: false,            // Capture request/response bodies
+  features: {
+    screenshot: true,                     // Screenshot capture
+    screenshotMethod: 'auto',            // 'auto' (html2canvas) or 'native' (getDisplayMedia)
+    screenRecording: true,                // Screen recording
+    screenRecordingMethod: 'auto',       // 'auto' (rrweb) or 'native' (getDisplayMedia)
+    sessionReplay: true,                  // Session replay collection
+    attachments: true,                    // File attachments
+  },
+});
+```
+
+| Option | Type | Default | Description |
 |---|---|---|---|
-| `projectKey` | `string` | Yes | Your Bugdump project key |
-| `hideButton` | `boolean` | No | Hide the floating button and trigger the widget programmatically |
+| `projectKey` | `string` | — | **Required.** Your Bugdump project key |
+| `endpoint` | `string` | `https://api.bugdump.com` | Custom API endpoint |
+| `theme` | `'light' \| 'dark' \| 'auto'` | `'auto'` | Widget color theme. `auto` follows the user's OS preference |
+| `hideButton` | `boolean` | `false` | Hide the floating button and trigger the widget programmatically |
+| `captureNetworkBodies` | `boolean` | `false` | Include request/response bodies in network logs |
+| `features` | `object` | all `true` | Enable/disable widget features (see below) |
+| `translations` | `object` | English defaults | Override widget UI strings (see below) |
+
+#### Feature Toggles
+
+| Feature | Default | Description |
+|---|---|---|
+| `features.screenshot` | `true` | Screenshot capture button |
+| `features.screenshotMethod` | `'auto'` | `'auto'` uses html2canvas (no prompt). `'native'` uses getDisplayMedia (pixel-perfect, shows permission dialog) |
+| `features.screenRecording` | `true` | Screen recording button |
+| `features.screenRecordingMethod` | `'auto'` | `'auto'` uses rrweb (no prompt, DOM-based). `'native'` uses getDisplayMedia (pixel-perfect, shows permission dialog) |
+| `features.sessionReplay` | `true` | Background session replay collection |
+| `features.attachments` | `true` | File attachment button |
+
+#### Translations
+
+Customize any widget UI string by passing a `translations` object. Only override the keys you need — everything else falls back to English defaults.
+
+```typescript
+const bugdump = Bugdump.init({
+  projectKey: 'your-project-key',
+  translations: {
+    title: 'Сообщить об ошибке',
+    descriptionPlaceholder: 'Опишите найденную ошибку...',
+    sendButton: 'Отправить отчёт',
+    successTitle: 'Отчёт отправлен!',
+    successSubtitle: 'Спасибо за ваш отзыв.',
+  },
+});
+```
+
+| Key | Default | Description |
+|---|---|---|
+| `title` | `Report a bug` | Panel header title and trigger button aria-label |
+| `descriptionPlaceholder` | `Describe the bug you found...` | Textarea placeholder |
+| `attachButton` | `Attach` | File attach button label |
+| `screenshotButton` | `Screenshot` | Screenshot button label |
+| `recordButton` | `Record` | Screen recording button label |
+| `sendButton` | `Send report` | Submit button label |
+| `reporterToggle` | `Reporter info` | Reporter section toggle label |
+| `namePlaceholder` | `Your name` | Name input placeholder |
+| `emailPlaceholder` | `Your email` | Email input placeholder |
+| `capturing` | `Capturing...` | Screenshot loading state |
+| `stop` | `Stop` | Recording stop button label |
+| `sending` | `Sending...` | Submit loading state |
+| `successTitle` | `Bug report sent!` | Success message title |
+| `successSubtitle` | `Thank you for your feedback.` | Success message subtitle |
+| `errorMessage` | `Something went wrong. Please try again.` | Error message |
+| `arrowTool` | `Arrow` | Annotation arrow tool tooltip |
+| `rectangleTool` | `Rectangle` | Annotation rectangle tool tooltip |
+| `drawTool` | `Draw` | Annotation freehand tool tooltip |
+| `textTool` | `Text` | Annotation text tool tooltip |
+| `blurTool` | `Blur` | Annotation blur tool tooltip |
+| `undo` | `Undo` | Annotation undo button tooltip |
+| `cancel` | `Cancel` | Annotation cancel button label |
+| `done` | `Done` | Annotation confirm button label |
+
+### Script Tag
+
+Use `data-*` attributes to configure the widget. All attributes are optional except `data-api-key`.
+
+```html
+<script
+  src="https://bugdump.com/sdk/latest.js"
+  data-api-key="your-api-key"
+  data-api-url="https://api.bugdump.com"
+  data-theme="auto"
+  data-hide-button="false"
+  data-capture-network-bodies="false"
+  data-screenshot="true"
+  data-screenshot-method="auto"
+  data-screen-recording="true"
+  data-screen-recording-method="auto"
+  data-session-replay="true"
+  data-attachments="true"
+  data-translations='{"title":"Report a bug","sendButton":"Send report"}'
+></script>
+```
+
+| Data Attribute | Config Equivalent | Default | Description |
+|---|---|---|---|
+| `data-api-key` | `projectKey` | — | **Required.** Your Bugdump project key |
+| `data-api-url` | `endpoint` | `https://api.bugdump.com` | Custom API endpoint |
+| `data-theme` | `theme` | `auto` | Widget theme: `light`, `dark`, or `auto` |
+| `data-hide-button` | `hideButton` | `false` | Hide the floating button |
+| `data-capture-network-bodies` | `captureNetworkBodies` | `false` | Capture request/response bodies |
+| `data-screenshot` | `features.screenshot` | `true` | Screenshot capture button |
+| `data-screenshot-method` | `features.screenshotMethod` | `auto` | `auto` (html2canvas) or `native` (getDisplayMedia) |
+| `data-screen-recording` | `features.screenRecording` | `true` | Screen recording button |
+| `data-screen-recording-method` | `features.screenRecordingMethod` | `auto` | `auto` (rrweb) or `native` (getDisplayMedia) |
+| `data-session-replay` | `features.sessionReplay` | `true` | Background session replay collection |
+| `data-attachments` | `features.attachments` | `true` | File attachment button |
+| `data-translations` | `translations` | — | JSON string with translation overrides |
+
+### Theme
+
+The widget supports three theme modes:
+
+- **`auto`** (default) — Automatically matches the user's OS preference via `prefers-color-scheme`
+- **`light`** — Always use the light theme
+- **`dark`** — Always use the dark theme
+
+> **Note:** Your account plan may also restrict certain features server-side (e.g., screen recording is only available on Pro and Ultra plans). The widget respects both local config and server-side limits.
 
 ## Headless Mode (No Floating Button)
 
@@ -282,7 +408,10 @@ The SDK exports all types you need:
 ```typescript
 import type {
   BugdumpConfig,
+  BugdumpTheme,
+  BugdumpTranslations,
   BugdumpUserContext,
+  CaptureMethod,
   ReportPayload,
   ReportResponse,
   TelemetrySnapshot,

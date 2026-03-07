@@ -3,16 +3,31 @@ import type {
   ReportResponse,
   UploadRequest,
   UploadResponse,
+  WidgetConfig,
   HttpErrorResponse,
 } from './types';
+
+const DEFAULT_TIMEOUT_MS = 30_000;
 
 export class HttpClient {
   private endpoint: string;
   private apiKey: string;
+  private activeXhr: XMLHttpRequest | null = null;
 
   constructor(endpoint: string, apiKey: string) {
     this.endpoint = endpoint;
     this.apiKey = apiKey;
+  }
+
+  abort(): void {
+    if (this.activeXhr) {
+      this.activeXhr.abort();
+      this.activeXhr = null;
+    }
+  }
+
+  async fetchConfig(): Promise<WidgetConfig> {
+    return this.get<WidgetConfig>('/api/widget/v1/config');
   }
 
   async submitReport(payload: ReportPayload): Promise<ReportResponse> {
@@ -38,6 +53,7 @@ export class HttpClient {
     if (onProgress) {
       return new Promise<void>((resolve, reject) => {
         const xhr = new XMLHttpRequest();
+        this.activeXhr = xhr;
         xhr.open('POST', presignedUrl);
 
         xhr.upload.addEventListener('progress', (e) => {
@@ -47,6 +63,7 @@ export class HttpClient {
         });
 
         xhr.addEventListener('load', () => {
+          this.activeXhr = null;
           if (xhr.status >= 200 && xhr.status < 300) {
             onProgress(100);
             resolve();
@@ -56,7 +73,13 @@ export class HttpClient {
         });
 
         xhr.addEventListener('error', () => {
+          this.activeXhr = null;
           reject(new BugdumpApiError('S3_UPLOAD_FAILED', 0));
+        });
+
+        xhr.addEventListener('abort', () => {
+          this.activeXhr = null;
+          reject(new BugdumpApiError('UPLOAD_ABORTED', 0));
         });
 
         xhr.send(formData);
@@ -73,17 +96,70 @@ export class HttpClient {
     }
   }
 
+  private async get<T>(path: string): Promise<T> {
+    const url = `${this.endpoint}${path}`;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT_MS);
+
+    let response: Response;
+    try {
+      response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Bugdump-API-Key': this.apiKey,
+        },
+        signal: controller.signal,
+      });
+    } catch (err) {
+      if (err instanceof DOMException && err.name === 'AbortError') {
+        throw new BugdumpApiError('REQUEST_TIMEOUT', 0);
+      }
+      throw err;
+    } finally {
+      clearTimeout(timeout);
+    }
+
+    if (!response.ok) {
+      let errorBody: HttpErrorResponse | undefined;
+      try {
+        errorBody = (await response.json()) as HttpErrorResponse;
+      } catch {
+        // response body is not JSON
+      }
+      throw new BugdumpApiError(
+        errorBody?.error || `HTTP_${response.status}`,
+        response.status,
+        errorBody?.details,
+      );
+    }
+
+    return (await response.json()) as T;
+  }
+
   private async post<T>(path: string, body: unknown): Promise<T> {
     const url = `${this.endpoint}${path}`;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT_MS);
 
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Bugdump-API-Key': this.apiKey,
-      },
-      body: JSON.stringify(body),
-    });
+    let response: Response;
+    try {
+      response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Bugdump-API-Key': this.apiKey,
+        },
+        body: JSON.stringify(body),
+        signal: controller.signal,
+      });
+    } catch (err) {
+      if (err instanceof DOMException && err.name === 'AbortError') {
+        throw new BugdumpApiError('REQUEST_TIMEOUT', 0);
+      }
+      throw err;
+    } finally {
+      clearTimeout(timeout);
+    }
 
     if (!response.ok) {
       let errorBody: HttpErrorResponse | undefined;

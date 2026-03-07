@@ -1,4 +1,4 @@
-export { captureScreenshot } from './screenshot';
+export { captureScreenshot, captureScreenshotNative } from './screenshot';
 export type { ScreenshotOptions, ScreenshotResult } from './screenshot';
 export { AnnotationOverlay, renderOperationsToCanvas } from './annotation';
 export type {

@@ -17,9 +17,12 @@ import {
   undoIcon,
   checkIcon,
 } from './icons';
-import { captureScreenshot } from '../capture/screenshot';
+import { captureScreenshot, captureScreenshotNative } from '../capture/screenshot';
 import { AnnotationOverlay, renderOperationsToCanvas } from '../capture/annotation';
 import type { TextOperation } from '../capture/annotation';
+import { DEFAULT_TRANSLATIONS } from '../core/config';
+import type { BugdumpTranslations, CaptureMethod } from '../types';
+import type { SessionReplayCollector } from '../collectors/session-replay';
 
 export interface TextAnnotationMeta {
   text: string;
@@ -43,6 +46,14 @@ export interface PanelSubmitData {
   attachments: Attachment[];
 }
 
+export interface PanelFeatures {
+  screenshot: boolean;
+  screenshotMethod: CaptureMethod;
+  screenRecording: boolean;
+  screenRecordingMethod: CaptureMethod;
+  attachments: boolean;
+}
+
 interface PanelElements {
   root: HTMLDivElement;
   textarea: HTMLTextAreaElement;
@@ -61,11 +72,14 @@ interface PanelElements {
 }
 
 const MAX_ATTACHMENTS = 10;
+const DEFAULT_MAX_MEDIA_SIZE = 50 * 1024 * 1024; // 50MB fallback
+const RECORDING_TIMESLICE_MS = 1000;
 let attachmentIdCounter = 0;
 
 function generateAttachmentId(): string {
   return `att_${Date.now()}_${++attachmentIdCounter}`;
 }
+
 
 export class Panel {
   private elements: PanelElements;
@@ -76,16 +90,27 @@ export class Panel {
   private mediaRecorder: MediaRecorder | null = null;
   private mediaStream: MediaStream | null = null;
   private recordedChunks: Blob[] = [];
+  private recordedSize = 0;
+  private maxMediaSize = DEFAULT_MAX_MEDIA_SIZE;
   private reporterVisible = false;
   private annotationOverlay: AnnotationOverlay | null = null;
   private annotationContainer: HTMLDivElement | null = null;
   private annotationStyleEl: HTMLStyleElement | null = null;
+  private autoRecordingStartTime: number | null = null;
+
+  private features: PanelFeatures;
+  private t: Required<BugdumpTranslations>;
 
   private onSubmit: ((data: PanelSubmitData) => Promise<void>) | null = null;
   private onClose: (() => void) | null = null;
 
-  constructor(private shadowRoot: ShadowRoot) {
+  private sessionReplayCollector: SessionReplayCollector | null = null;
+
+  constructor(private shadowRoot: ShadowRoot, features?: PanelFeatures, translations?: BugdumpTranslations) {
+    this.features = features ?? { screenshot: true, screenshotMethod: 'auto', screenRecording: true, screenRecordingMethod: 'auto', attachments: true };
+    this.t = { ...DEFAULT_TRANSLATIONS, ...translations };
     this.elements = this.createDOM();
+    this.applyFeatures();
     this.bindEvents();
   }
 
@@ -95,6 +120,32 @@ export class Panel {
 
   setOnClose(handler: () => void): void {
     this.onClose = handler;
+  }
+
+  setMaxMediaSize(size: number): void {
+    this.maxMediaSize = size;
+  }
+
+  setSessionReplayCollector(collector: SessionReplayCollector): void {
+    this.sessionReplayCollector = collector;
+  }
+
+  setRemoveBranding(remove: boolean): void {
+    const branding = this.elements.root.querySelector<HTMLElement>('[data-role="branding"]');
+    if (branding) {
+      branding.style.display = remove ? 'none' : '';
+    }
+  }
+
+  updateFeatures(features: Partial<PanelFeatures>): void {
+    Object.assign(this.features, features);
+    this.applyFeatures();
+  }
+
+  private applyFeatures(): void {
+    this.elements.screenshotBtn.style.display = this.features.screenshot ? '' : 'none';
+    this.elements.recordBtn.style.display = this.features.screenRecording ? '' : 'none';
+    this.elements.attachBtn.style.display = this.features.attachments ? '' : 'none';
   }
 
   show(): void {
@@ -145,33 +196,34 @@ export class Panel {
 
     root.innerHTML = `
       <div class="bd-panel__header">
-        <span class="bd-panel__title">Report a bug</span>
+        <span class="bd-panel__title">${this.t.title}</span>
         <button class="bd-panel__close" aria-label="Close">${closeIcon()}</button>
       </div>
       <div class="bd-panel__body" data-role="body">
-        <textarea class="bd-textarea" placeholder="Describe the bug you found..." rows="4"></textarea>
+        <textarea class="bd-textarea" placeholder="${this.t.descriptionPlaceholder}" rows="4"></textarea>
         <div class="bd-action-bar">
-          <button class="bd-action-btn" data-action="attach">${paperclipIcon()} Attach</button>
-          <button class="bd-action-btn" data-action="screenshot">${cameraIcon()} Screenshot</button>
-          <button class="bd-action-btn" data-action="record">${videoIcon()} Record</button>
+          <button class="bd-action-btn" data-action="attach">${paperclipIcon()} ${this.t.attachButton}</button>
+          <button class="bd-action-btn" data-action="screenshot">${cameraIcon()} ${this.t.screenshotButton}</button>
+          <button class="bd-action-btn" data-action="record">${videoIcon()} ${this.t.recordButton}</button>
         </div>
         <div class="bd-attachments" data-role="attachments"></div>
         <button class="bd-reporter-toggle" data-action="toggle-reporter">
-          ${chevronIcon()} Reporter info
+          ${chevronIcon()} ${this.t.reporterToggle}
         </button>
         <div class="bd-reporter-fields" data-role="reporter-fields">
-          <input class="bd-input" type="text" placeholder="Your name" data-role="name" />
-          <input class="bd-input" type="email" placeholder="Your email" data-role="email" />
+          <input class="bd-input" type="text" placeholder="${this.t.namePlaceholder}" data-role="name" />
+          <input class="bd-input" type="email" placeholder="${this.t.emailPlaceholder}" data-role="email" />
         </div>
         <input class="bd-file-input" type="file" multiple data-role="file-input" />
       </div>
       <div class="bd-success" data-role="success" style="display:none">
         ${checkCircleIcon()}
-        <div class="bd-success__title">Bug report sent!</div>
-        <div class="bd-success__subtitle">Thank you for your feedback.</div>
+        <div class="bd-success__title">${this.t.successTitle}</div>
+        <div class="bd-success__subtitle">${this.t.successSubtitle}</div>
       </div>
       <div class="bd-panel__footer">
-        <button class="bd-send-btn" data-action="send">${sendIcon()} Send report</button>
+        <a class="bd-branding" data-role="branding" href="https://bugdump.com?ref=widget" target="_blank" rel="noopener">Powered by Bugdump</a>
+        <button class="bd-send-btn" data-action="send">${sendIcon()} ${this.t.sendButton}</button>
       </div>
     `;
 
@@ -247,26 +299,29 @@ export class Panel {
       }, 2000);
     } catch {
       this.setSubmitting(false);
+      this.showError(this.t.errorMessage);
     }
   }
 
   private async handleScreenshot(): Promise<void> {
     this.elements.screenshotBtn.disabled = true;
     const originalContent = this.elements.screenshotBtn.innerHTML;
-    this.elements.screenshotBtn.innerHTML = `<span class="bd-spinner"></span> Capturing...`;
+    this.elements.screenshotBtn.innerHTML = `<span class="bd-spinner"></span> ${this.t.capturing}`;
 
     try {
       this.hide();
       await delay(50);
 
-      const result = await captureScreenshot({
-        filter: (node) => {
-          if (node instanceof HTMLElement && node.tagName.toLowerCase() === 'bugdump-widget') {
-            return false;
-          }
-          return true;
-        },
-      });
+      const result = this.features.screenshotMethod === 'native'
+        ? await captureScreenshotNative()
+        : await captureScreenshot({
+            filter: (node) => {
+              if (node instanceof HTMLElement && node.tagName.toLowerCase() === 'bugdump-widget') {
+                return false;
+              }
+              return true;
+            },
+          });
 
       const imageUrl = URL.createObjectURL(result.blob);
       const image = await loadImage(imageUrl);
@@ -287,22 +342,28 @@ export class Panel {
     width: number,
     height: number,
   ): void {
+    this.annotationContainer = document.createElement('div');
+    this.annotationContainer.style.cssText =
+      'position:fixed;top:0;left:0;width:100%;height:100%;z-index:2147483647;';
+
+    const shadow = this.annotationContainer.attachShadow({ mode: 'closed' });
     this.annotationStyleEl = document.createElement('style');
     this.annotationStyleEl.textContent = getAnnotationStyles();
-    document.head.appendChild(this.annotationStyleEl);
+    shadow.appendChild(this.annotationStyleEl);
 
-    this.annotationContainer = document.createElement('div');
-    this.annotationContainer.className = 'bd-annotation-overlay';
+    const innerRoot = document.createElement('div');
+    innerRoot.className = 'bd-annotation-overlay';
+    shadow.appendChild(innerRoot);
 
     const toolbar = document.createElement('div');
     toolbar.className = 'bd-annotation-toolbar';
     toolbar.innerHTML = `
       <div class="bd-annotation-toolbar__group">
-        <button class="bd-annotation-tool-btn active" data-tool="arrow" title="Arrow">${arrowToolIcon()}</button>
-        <button class="bd-annotation-tool-btn" data-tool="box" title="Rectangle">${boxToolIcon()}</button>
-        <button class="bd-annotation-tool-btn" data-tool="freehand" title="Draw">${penToolIcon()}</button>
-        <button class="bd-annotation-tool-btn" data-tool="text" title="Text">${textToolIcon()}</button>
-        <button class="bd-annotation-tool-btn" data-tool="blur" title="Blur">${blurToolIcon()}</button>
+        <button class="bd-annotation-tool-btn active" data-tool="arrow" title="${this.t.arrowTool}">${arrowToolIcon()}</button>
+        <button class="bd-annotation-tool-btn" data-tool="box" title="${this.t.rectangleTool}">${boxToolIcon()}</button>
+        <button class="bd-annotation-tool-btn" data-tool="freehand" title="${this.t.drawTool}">${penToolIcon()}</button>
+        <button class="bd-annotation-tool-btn" data-tool="text" title="${this.t.textTool}">${textToolIcon()}</button>
+        <button class="bd-annotation-tool-btn" data-tool="blur" title="${this.t.blurTool}">${blurToolIcon()}</button>
       </div>
       <div class="bd-annotation-toolbar__colors">
         <button class="bd-annotation-color-btn active" data-color="#ff0000" style="background:#ff0000" title="Red"></button>
@@ -312,17 +373,17 @@ export class Panel {
         <button class="bd-annotation-color-btn" data-color="#ffffff" style="background:#ffffff" title="White"></button>
       </div>
       <div class="bd-annotation-toolbar__spacer"></div>
-      <button class="bd-annotation-action-btn" data-annotation-action="undo" title="Undo">${undoIcon()}</button>
+      <button class="bd-annotation-action-btn" data-annotation-action="undo" title="${this.t.undo}">${undoIcon()}</button>
       <div class="bd-annotation-toolbar__divider"></div>
-      <button class="bd-annotation-toolbar__cancel" data-annotation-action="cancel">${closeIcon()} Cancel</button>
-      <button class="bd-annotation-toolbar__confirm" data-annotation-action="confirm">${checkIcon()} Done</button>
+      <button class="bd-annotation-toolbar__cancel" data-annotation-action="cancel">${closeIcon()} ${this.t.cancel}</button>
+      <button class="bd-annotation-toolbar__confirm" data-annotation-action="confirm">${checkIcon()} ${this.t.done}</button>
     `;
 
     const canvasWrap = document.createElement('div');
     canvasWrap.className = 'bd-annotation-canvas-wrap';
 
-    this.annotationContainer.appendChild(toolbar);
-    this.annotationContainer.appendChild(canvasWrap);
+    innerRoot.appendChild(toolbar);
+    innerRoot.appendChild(canvasWrap);
     document.body.appendChild(this.annotationContainer);
 
     this.annotationOverlay = new AnnotationOverlay(canvasWrap, width, height);
@@ -428,6 +489,24 @@ export class Panel {
       return;
     }
 
+    if (this.features.screenRecordingMethod === 'auto') {
+      this.handleRecordAuto();
+    } else {
+      await this.handleRecordNative();
+    }
+  }
+
+  private handleRecordAuto(): void {
+    if (!this.sessionReplayCollector) {
+      console.warn('[Bugdump] Session replay collector not available for auto recording.');
+      return;
+    }
+
+    this.autoRecordingStartTime = Date.now();
+    this.setRecordingState(true);
+  }
+
+  private async handleRecordNative(): Promise<void> {
     try {
       this.mediaStream = await navigator.mediaDevices.getDisplayMedia({
         video: true,
@@ -436,13 +515,22 @@ export class Panel {
       } as DisplayMediaStreamOptions);
 
       this.recordedChunks = [];
+      this.recordedSize = 0;
       this.mediaRecorder = new MediaRecorder(this.mediaStream, {
         mimeType: getSupportedMimeType(),
       });
 
       this.mediaRecorder.ondataavailable = (e) => {
         if (e.data.size > 0) {
+          this.recordedSize += e.data.size;
+
+          if (this.recordedSize > this.maxMediaSize) {
+            this.stopRecording();
+            return;
+          }
+
           this.recordedChunks.push(e.data);
+          this.updateRecordingProgress();
         }
       };
 
@@ -464,7 +552,7 @@ export class Panel {
         this.stopRecording();
       });
 
-      this.mediaRecorder.start();
+      this.mediaRecorder.start(RECORDING_TIMESLICE_MS);
       this.setRecordingState(true);
     } catch {
       this.cleanupMediaStream();
@@ -473,10 +561,36 @@ export class Panel {
   }
 
   private stopRecording(): void {
-    if (this.mediaRecorder && this.mediaRecorder.state !== 'inactive') {
-      this.mediaRecorder.stop();
+    if (this.features.screenRecordingMethod === 'auto') {
+      this.stopRecordingAuto();
+    } else {
+      if (this.mediaRecorder && this.mediaRecorder.state !== 'inactive') {
+        this.mediaRecorder.stop();
+      }
+      this.cleanupMediaStream();
     }
-    this.cleanupMediaStream();
+  }
+
+  private stopRecordingAuto(): void {
+    if (!this.sessionReplayCollector || !this.autoRecordingStartTime) {
+      this.setRecordingState(false);
+      return;
+    }
+
+    const recordingEvents = this.sessionReplayCollector.snapshot(this.autoRecordingStartTime);
+
+    if (recordingEvents.length > 0) {
+      const blob = new Blob([JSON.stringify(recordingEvents)], { type: 'application/json' });
+      this.addAttachment({
+        id: generateAttachmentId(),
+        type: 'recording',
+        blob,
+        name: `recording-${Date.now()}.json`,
+      });
+    }
+
+    this.autoRecordingStartTime = null;
+    this.setRecordingState(false);
   }
 
   private cleanupMediaStream(): void {
@@ -486,13 +600,19 @@ export class Panel {
     }
   }
 
+  private updateRecordingProgress(): void {
+    const usedMB = formatMB(this.recordedSize);
+    const limitMB = formatMB(this.maxMediaSize);
+    this.elements.recordBtn.innerHTML = `${stopIcon()} ${this.t.stop} (${usedMB} / ${limitMB})`;
+  }
+
   private setRecordingState(isRecording: boolean): void {
     this.recording = isRecording;
     if (isRecording) {
-      this.elements.recordBtn.innerHTML = `${stopIcon()} Stop`;
+      this.elements.recordBtn.innerHTML = `${stopIcon()} ${this.t.stop}`;
       this.elements.recordBtn.style.color = '#ef4444';
     } else {
-      this.elements.recordBtn.innerHTML = `${videoIcon()} Record`;
+      this.elements.recordBtn.innerHTML = `${videoIcon()} ${this.t.recordButton}`;
       this.elements.recordBtn.style.color = '';
     }
   }
@@ -552,21 +672,29 @@ export class Panel {
       const el = document.createElement('div');
       el.className = 'bd-attachment';
 
-      let content: string;
       if (att.thumbnailUrl && att.type !== 'recording') {
-        content = `<img src="${att.thumbnailUrl}" alt="${att.name}" />`;
+        const img = document.createElement('img');
+        img.src = att.thumbnailUrl;
+        img.alt = att.name;
+        el.appendChild(img);
       } else if (att.type === 'recording' && att.thumbnailUrl) {
-        content = `<video src="${att.thumbnailUrl}" muted></video>`;
+        const video = document.createElement('video');
+        video.src = att.thumbnailUrl;
+        video.muted = true;
+        el.appendChild(video);
       } else {
-        content = `<div class="bd-attachment__icon">${fileIcon()}</div>`;
+        const iconDiv = document.createElement('div');
+        iconDiv.className = 'bd-attachment__icon';
+        iconDiv.innerHTML = fileIcon();
+        el.appendChild(iconDiv);
       }
 
-      el.innerHTML = `
-        ${content}
-        <button class="bd-attachment__remove" data-remove-id="${att.id}" aria-label="Remove">
-          ${xSmallIcon()}
-        </button>
-      `;
+      const removeBtn = document.createElement('button');
+      removeBtn.className = 'bd-attachment__remove';
+      removeBtn.dataset.removeId = att.id;
+      removeBtn.setAttribute('aria-label', 'Remove');
+      removeBtn.innerHTML = xSmallIcon();
+      el.appendChild(removeBtn);
 
       container.appendChild(el);
     }
@@ -588,9 +716,9 @@ export class Panel {
     this.submitting = submitting;
     this.elements.sendBtn.disabled = submitting;
     if (submitting) {
-      this.elements.sendBtn.innerHTML = `<span class="bd-spinner"></span> Sending...`;
+      this.elements.sendBtn.innerHTML = `<span class="bd-spinner"></span> ${this.t.sending}`;
     } else {
-      this.elements.sendBtn.innerHTML = `${sendIcon()} Send report`;
+      this.elements.sendBtn.innerHTML = `${sendIcon()} ${this.t.sendButton}`;
     }
   }
 
@@ -606,6 +734,18 @@ export class Panel {
     this.elements.successView.style.display = 'none';
     const footer = this.elements.root.querySelector<HTMLDivElement>('.bd-panel__footer')!;
     footer.style.display = 'flex';
+  }
+
+  private showError(message: string): void {
+    const existing = this.elements.body.querySelector('.bd-error');
+    if (existing) existing.remove();
+
+    const el = document.createElement('div');
+    el.className = 'bd-error';
+    el.textContent = message;
+    this.elements.body.insertBefore(el, this.elements.body.firstChild);
+
+    setTimeout(() => el.remove(), 5000);
   }
 
   private revokeAttachmentUrls(): void {
@@ -630,6 +770,10 @@ function loadImage(src: string): Promise<HTMLImageElement> {
   });
 }
 
+function formatMB(bytes: number): string {
+  return `${(bytes / (1024 * 1024)).toFixed(1)}MB`;
+}
+
 function getSupportedMimeType(): string {
   const types = ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm', 'video/mp4'];
   for (const type of types) {
@@ -643,12 +787,8 @@ function getSupportedMimeType(): string {
 function getAnnotationStyles(): string {
   return `
     .bd-annotation-overlay {
-      position: fixed;
-      top: 0;
-      left: 0;
       width: 100%;
       height: 100%;
-      z-index: 2147483647;
       background: rgba(0, 0, 0, 0.6);
       display: flex;
       flex-direction: column;

@@ -244,6 +244,7 @@ export class AnnotationOverlay {
   private startPoint: Point | null = null;
   private currentPoints: Point[] = [];
   private screenshotImage: HTMLImageElement | null = null;
+  private activeTextInput: HTMLInputElement | null = null;
 
   private onPointerDownBound: (e: PointerEvent) => void;
   private onPointerMoveBound: (e: PointerEvent) => void;
@@ -344,6 +345,7 @@ export class AnnotationOverlay {
   }
 
   destroy(): void {
+    this.dismissActiveTextInput();
     this.canvas.removeEventListener('pointerdown', this.onPointerDownBound);
     this.canvas.removeEventListener('pointermove', this.onPointerMoveBound);
     this.canvas.removeEventListener('pointerup', this.onPointerUpBound);
@@ -454,9 +456,50 @@ export class AnnotationOverlay {
   }
 
   private promptTextInput(position: Point): void {
-    const text = prompt('Enter annotation text:');
-    if (text) {
-      this.addTextAtPosition(position, text);
+    this.dismissActiveTextInput();
+
+    const rect = this.canvas.getBoundingClientRect();
+    const screenX = (position.x / this.width) * rect.width + rect.left;
+    const screenY = (position.y / this.height) * rect.height + rect.top;
+
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.placeholder = 'Type text…';
+    input.style.cssText = `
+      position:fixed;left:${screenX}px;top:${screenY}px;
+      font-size:${this.fontSize}px;font-family:sans-serif;
+      color:${this.color};background:rgba(0,0,0,0.7);
+      border:1px solid rgba(255,255,255,0.3);border-radius:4px;
+      padding:2px 6px;outline:none;z-index:2147483647;
+      min-width:100px;
+    `;
+    this.activeTextInput = input;
+    this.container.appendChild(input);
+    input.focus();
+
+    const commit = () => {
+      const text = input.value.trim();
+      if (text) {
+        this.addTextAtPosition(position, text);
+      }
+      this.dismissActiveTextInput();
+    };
+
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        commit();
+      } else if (e.key === 'Escape') {
+        this.dismissActiveTextInput();
+      }
+    });
+    input.addEventListener('blur', commit);
+  }
+
+  private dismissActiveTextInput(): void {
+    if (this.activeTextInput) {
+      this.activeTextInput.remove();
+      this.activeTextInput = null;
     }
   }
 

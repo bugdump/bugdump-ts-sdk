@@ -1,8 +1,50 @@
+export type CaptureMethod = 'auto' | 'native';
+
+export interface BugdumpFeatures {
+  screenshot?: boolean;
+  screenshotMethod?: CaptureMethod;
+  screenRecording?: boolean;
+  screenRecordingMethod?: CaptureMethod;
+  sessionReplay?: boolean;
+  attachments?: boolean;
+}
+
+export type BugdumpTheme = 'light' | 'dark' | 'auto';
+
+export interface BugdumpTranslations {
+  title?: string;
+  descriptionPlaceholder?: string;
+  attachButton?: string;
+  screenshotButton?: string;
+  recordButton?: string;
+  sendButton?: string;
+  reporterToggle?: string;
+  namePlaceholder?: string;
+  emailPlaceholder?: string;
+  capturing?: string;
+  stop?: string;
+  sending?: string;
+  successTitle?: string;
+  successSubtitle?: string;
+  errorMessage?: string;
+  arrowTool?: string;
+  rectangleTool?: string;
+  drawTool?: string;
+  textTool?: string;
+  blurTool?: string;
+  undo?: string;
+  cancel?: string;
+  done?: string;
+}
+
 export interface BugdumpConfig {
   projectKey: string;
   endpoint?: string;
   captureNetworkBodies?: boolean;
   hideButton?: boolean;
+  theme?: BugdumpTheme;
+  features?: BugdumpFeatures;
+  translations?: BugdumpTranslations;
 }
 
 export interface BugdumpUserContext {
@@ -49,6 +91,15 @@ export interface UploadResponse {
   fileId: string;
   url: string;
   fields: Record<string, string>;
+}
+
+export interface WidgetConfig {
+  maxMediaSizePerReport: number;
+  features: {
+    sessionReplay: boolean;
+    screenRecording: boolean;
+    removeBranding: boolean;
+  };
 }
 
 export interface HttpErrorResponse {

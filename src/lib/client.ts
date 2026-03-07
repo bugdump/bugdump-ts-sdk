@@ -40,6 +40,10 @@ export class Bugdump {
     this.sessionReplayCollector = new SessionReplayCollector();
   }
 
+  private static get isBrowser(): boolean {
+    return typeof window !== 'undefined' && typeof document !== 'undefined';
+  }
+
   static init(config: BugdumpConfig): Bugdump {
     if (Bugdump.instance) {
       return Bugdump.instance;
@@ -51,13 +55,34 @@ export class Bugdump {
     instance.state.config = resolved;
     instance.state.initialized = true;
     instance.httpClient = new HttpClient(resolved.endpoint, resolved.projectKey);
-
     instance.networkCollector = new NetworkCollector({ captureBodies: resolved.captureNetworkBodies });
-    instance.consoleCollector.start();
-    instance.networkCollector.start();
-    instance.sessionReplayCollector.start();
+
+    if (Bugdump.isBrowser) {
+      instance.consoleCollector.start();
+      instance.networkCollector.start();
+      if (resolved.features.sessionReplay) {
+        instance.sessionReplayCollector.start();
+      }
+    }
 
     instance.mountWidget();
+
+    instance.httpClient
+      .fetchConfig()
+      .then((widgetConfig) => {
+        instance.state.widgetConfig = widgetConfig;
+        instance.widget?.setMaxMediaSize(widgetConfig.maxMediaSizePerReport);
+        instance.widget?.updateFeatures({
+          screenRecording: resolved.features.screenRecording && widgetConfig.features.screenRecording,
+        });
+        instance.widget?.setRemoveBranding(widgetConfig.features.removeBranding);
+        if (!widgetConfig.features.sessionReplay) {
+          instance.sessionReplayCollector.stop();
+        }
+      })
+      .catch(() => {
+        console.warn('[Bugdump] Failed to fetch widget config, using defaults.');
+      });
 
     Bugdump.instance = instance;
     return instance;
@@ -96,15 +121,21 @@ export class Bugdump {
   collectTelemetry(): TelemetrySnapshot {
     this.ensureInitialized();
     return {
-      consoleLogs: this.consoleCollector.flush(),
-      networkRequests: this.networkCollector.flush(),
+      consoleLogs: this.consoleCollector.snapshot(),
+      networkRequests: this.networkCollector.snapshot(),
       sessionReplayEvents: this.sessionReplayCollector.flush(),
       performance: capturePerformance(),
       metadata: captureMetadata(),
     };
   }
 
+  private flushCollectors(): void {
+    this.consoleCollector.flush();
+    this.networkCollector.flush();
+  }
+
   destroy(): void {
+    this.httpClient?.abort();
     this.widget?.destroy();
     this.widget = null;
     this.consoleCollector.stop();
@@ -139,8 +170,23 @@ export class Bugdump {
   private mountWidget(): void {
     if (typeof document === 'undefined') return;
 
-    this.widget = new Widget({ hideButton: this.state.config?.hideButton });
+    const features = this.state.config?.features;
+    this.widget = new Widget({
+      hideButton: this.state.config?.hideButton,
+      theme: this.state.config?.theme,
+      features: features
+        ? {
+            screenshot: features.screenshot ?? true,
+            screenshotMethod: features.screenshotMethod ?? 'auto',
+            screenRecording: features.screenRecording ?? true,
+            screenRecordingMethod: features.screenRecordingMethod ?? 'auto',
+            attachments: features.attachments ?? true,
+          }
+        : undefined,
+      translations: this.state.config?.translations,
+    });
     this.widget.setOnSubmit((data) => this.handleSubmit(data));
+    this.widget.setSessionReplayCollector(this.sessionReplayCollector);
   }
 
   private async handleSubmit(data: PanelSubmitData): Promise<void> {
@@ -180,21 +226,25 @@ export class Bugdump {
       uploadIndex++;
       const currentIndex = uploadIndex;
 
-      const replayBlob = new Blob([JSON.stringify(telemetry.sessionReplayEvents)], {
-        type: 'application/json',
-      });
-      const uploadResponse = await httpClient.requestUpload({
-        originalName: `session-replay-${Date.now()}.json`,
-        mimeType: 'application/json',
-        size: replayBlob.size,
-      });
-      await httpClient.uploadFileToS3(uploadResponse.url, uploadResponse.fields, replayBlob, (percent) => {
-        this.widget?.setUploadProgress(currentIndex, totalUploads, percent);
-      });
-      uploadedAttachments.push({
-        fileId: uploadResponse.fileId,
-        type: 'session_replay',
-      });
+      try {
+        const replayBlob = new Blob([JSON.stringify(telemetry.sessionReplayEvents)], {
+          type: 'application/json',
+        });
+        const uploadResponse = await httpClient.requestUpload({
+          originalName: `session-replay-${Date.now()}.json`,
+          mimeType: 'application/json',
+          size: replayBlob.size,
+        });
+        await httpClient.uploadFileToS3(uploadResponse.url, uploadResponse.fields, replayBlob, (percent) => {
+          this.widget?.setUploadProgress(currentIndex, totalUploads, percent);
+        });
+        uploadedAttachments.push({
+          fileId: uploadResponse.fileId,
+          type: 'session_replay',
+        });
+      } catch {
+        console.warn('[Bugdump] Session replay upload failed, submitting report without it.');
+      }
     }
 
     const payload: ReportPayload = {
@@ -214,6 +264,7 @@ export class Bugdump {
     };
 
     await httpClient.submitReport(payload);
+    this.flushCollectors();
   }
 
   private ensureInitialized(): void {

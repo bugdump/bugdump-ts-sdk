@@ -52,3 +52,51 @@ export async function captureScreenshot(
 
   return { blob, width, height };
 }
+
+export async function captureScreenshotNative(
+  options: Pick<ScreenshotOptions, 'quality'> = {},
+): Promise<ScreenshotResult> {
+  const { quality = DEFAULT_QUALITY } = options;
+
+  const stream = await navigator.mediaDevices.getDisplayMedia({
+    video: true,
+    audio: false,
+    preferCurrentTab: true,
+  } as DisplayMediaStreamOptions);
+
+  try {
+    const track = stream.getVideoTracks()[0]!;
+    const settings = track.getSettings();
+    const width = settings.width || window.innerWidth;
+    const height = settings.height || window.innerHeight;
+
+    const video = document.createElement('video');
+    video.srcObject = stream;
+    video.muted = true;
+    await video.play();
+
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d')!;
+    ctx.drawImage(video, 0, 0, width, height);
+
+    video.pause();
+    video.srcObject = null;
+
+    const blob = await new Promise<Blob>((resolve, reject) => {
+      canvas.toBlob(
+        (b: Blob | null) => {
+          if (b) resolve(b);
+          else reject(new Error('Native screenshot capture failed: no blob produced'));
+        },
+        DEFAULT_MIME_TYPE,
+        quality,
+      );
+    });
+
+    return { blob, width, height };
+  } finally {
+    stream.getTracks().forEach((t) => t.stop());
+  }
+}

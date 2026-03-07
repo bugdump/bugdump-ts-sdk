@@ -75,12 +75,22 @@ export class SessionReplayCollector {
     }
   }
 
-  flush(): eventWithTime[] {
+  snapshot(sinceTimestamp?: number): eventWithTime[] {
     if (this.active && record.takeFullSnapshot) {
       record.takeFullSnapshot();
     }
 
     const events = this.extractReplayableSlice();
+
+    if (sinceTimestamp !== undefined) {
+      return events.filter((e) => e.timestamp >= sinceTimestamp);
+    }
+
+    return events;
+  }
+
+  flush(): eventWithTime[] {
+    const events = this.snapshot();
     this.buffer = [];
     return events;
   }

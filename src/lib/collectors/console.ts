@@ -41,6 +41,10 @@ export class ConsoleCollector {
     this.originals.clear();
   }
 
+  snapshot(): ConsoleLogEntry[] {
+    return [...this.buffer];
+  }
+
   flush(): ConsoleLogEntry[] {
     const entries = [...this.buffer];
     this.buffer = [];
