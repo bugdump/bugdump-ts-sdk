@@ -4,9 +4,9 @@ const DEFAULT_ENDPOINT = 'https://api.bugdump.com';
 
 const DEFAULT_FEATURES: Required<BugdumpFeatures> = {
   screenshot: true,
-  screenshotMethod: 'auto' as CaptureMethod,
+  screenshotMethod: 'dom' as CaptureMethod,
   screenRecording: true,
-  screenRecordingMethod: 'auto' as CaptureMethod,
+  screenRecordingMethod: 'dom' as CaptureMethod,
   sessionReplay: true,
   attachments: true,
 };

@@ -123,7 +123,7 @@ export class Bugdump {
     return {
       consoleLogs: this.consoleCollector.snapshot(),
       networkRequests: this.networkCollector.snapshot(),
-      sessionReplayEvents: this.sessionReplayCollector.flush(),
+      sessionReplayEvents: this.sessionReplayCollector.getSessionReplay(),
       performance: capturePerformance(),
       metadata: captureMetadata(),
     };
@@ -177,9 +177,9 @@ export class Bugdump {
       features: features
         ? {
             screenshot: features.screenshot ?? true,
-            screenshotMethod: features.screenshotMethod ?? 'auto',
+            screenshotMethod: features.screenshotMethod ?? 'dom',
             screenRecording: features.screenRecording ?? true,
-            screenRecordingMethod: features.screenRecordingMethod ?? 'auto',
+            screenRecordingMethod: features.screenRecordingMethod ?? 'dom',
             attachments: features.attachments ?? true,
           }
         : undefined,

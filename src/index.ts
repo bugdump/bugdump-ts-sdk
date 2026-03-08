@@ -55,9 +55,9 @@ if (typeof document !== 'undefined') {
 
     const features: Record<string, boolean | string> = {};
     if (el.hasAttribute('data-screenshot')) features.screenshot = el.getAttribute('data-screenshot') !== 'false';
-    if (el.hasAttribute('data-screenshot-method')) features.screenshotMethod = el.getAttribute('data-screenshot-method') || 'auto';
+    if (el.hasAttribute('data-screenshot-method')) features.screenshotMethod = el.getAttribute('data-screenshot-method') || 'dom';
     if (el.hasAttribute('data-screen-recording')) features.screenRecording = el.getAttribute('data-screen-recording') !== 'false';
-    if (el.hasAttribute('data-screen-recording-method')) features.screenRecordingMethod = el.getAttribute('data-screen-recording-method') || 'auto';
+    if (el.hasAttribute('data-screen-recording-method')) features.screenRecordingMethod = el.getAttribute('data-screen-recording-method') || 'dom';
     if (el.hasAttribute('data-session-replay')) features.sessionReplay = el.getAttribute('data-session-replay') !== 'false';
     if (el.hasAttribute('data-attachments')) features.attachments = el.getAttribute('data-attachments') !== 'false';
 

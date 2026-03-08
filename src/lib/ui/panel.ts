@@ -74,6 +74,7 @@ interface PanelElements {
 const MAX_ATTACHMENTS = 10;
 const DEFAULT_MAX_MEDIA_SIZE = 50 * 1024 * 1024; // 50MB fallback
 const RECORDING_TIMESLICE_MS = 1000;
+const MAX_RECORDING_DURATION_S = 180; // 3 minutes
 let attachmentIdCounter = 0;
 
 function generateAttachmentId(): string {
@@ -92,11 +93,12 @@ export class Panel {
   private recordedChunks: Blob[] = [];
   private recordedSize = 0;
   private maxMediaSize = DEFAULT_MAX_MEDIA_SIZE;
+  private recordingStartTime = 0;
+  private recordingTimerInterval: ReturnType<typeof setInterval> | null = null;
   private reporterVisible = false;
   private annotationOverlay: AnnotationOverlay | null = null;
   private annotationContainer: HTMLDivElement | null = null;
   private annotationStyleEl: HTMLStyleElement | null = null;
-  private autoRecordingStartTime: number | null = null;
 
   private features: PanelFeatures;
   private t: Required<BugdumpTranslations>;
@@ -107,7 +109,7 @@ export class Panel {
   private sessionReplayCollector: SessionReplayCollector | null = null;
 
   constructor(private shadowRoot: ShadowRoot, features?: PanelFeatures, translations?: BugdumpTranslations) {
-    this.features = features ?? { screenshot: true, screenshotMethod: 'auto', screenRecording: true, screenRecordingMethod: 'auto', attachments: true };
+    this.features = features ?? { screenshot: true, screenshotMethod: 'dom', screenRecording: true, screenRecordingMethod: 'dom', attachments: true };
     this.t = { ...DEFAULT_TRANSLATIONS, ...translations };
     this.elements = this.createDOM();
     this.applyFeatures();
@@ -312,7 +314,7 @@ export class Panel {
       this.hide();
       await delay(50);
 
-      const result = this.features.screenshotMethod === 'native'
+      const result = this.features.screenshotMethod === 'screen-capture'
         ? await captureScreenshotNative()
         : await captureScreenshot({
             filter: (node) => {
@@ -489,20 +491,20 @@ export class Panel {
       return;
     }
 
-    if (this.features.screenRecordingMethod === 'auto') {
-      this.handleRecordAuto();
+    if (this.features.screenRecordingMethod === 'dom') {
+      this.handleRecordDom();
     } else {
       await this.handleRecordNative();
     }
   }
 
-  private handleRecordAuto(): void {
+  private handleRecordDom(): void {
     if (!this.sessionReplayCollector) {
-      console.warn('[Bugdump] Session replay collector not available for auto recording.');
+      console.warn('[Bugdump] Session replay collector not available for dom recording.');
       return;
     }
 
-    this.autoRecordingStartTime = Date.now();
+    this.sessionReplayCollector.startRecording();
     this.setRecordingState(true);
   }
 
@@ -561,8 +563,8 @@ export class Panel {
   }
 
   private stopRecording(): void {
-    if (this.features.screenRecordingMethod === 'auto') {
-      this.stopRecordingAuto();
+    if (this.features.screenRecordingMethod === 'dom') {
+      this.stopRecordingDom();
     } else {
       if (this.mediaRecorder && this.mediaRecorder.state !== 'inactive') {
         this.mediaRecorder.stop();
@@ -571,13 +573,13 @@ export class Panel {
     }
   }
 
-  private stopRecordingAuto(): void {
-    if (!this.sessionReplayCollector || !this.autoRecordingStartTime) {
+  private stopRecordingDom(): void {
+    if (!this.sessionReplayCollector) {
       this.setRecordingState(false);
       return;
     }
 
-    const recordingEvents = this.sessionReplayCollector.snapshot(this.autoRecordingStartTime);
+    const recordingEvents = this.sessionReplayCollector.stopRecording();
 
     if (recordingEvents.length > 0) {
       const blob = new Blob([JSON.stringify(recordingEvents)], { type: 'application/json' });
@@ -589,7 +591,6 @@ export class Panel {
       });
     }
 
-    this.autoRecordingStartTime = null;
     this.setRecordingState(false);
   }
 
@@ -601,20 +602,47 @@ export class Panel {
   }
 
   private updateRecordingProgress(): void {
+    const elapsedS = Math.floor((Date.now() - this.recordingStartTime) / 1000);
+    const minutes = Math.floor(elapsedS / 60);
+    const seconds = elapsedS % 60;
+    const elapsed = `${minutes}:${String(seconds).padStart(2, '0')}`;
     const usedMB = formatMB(this.recordedSize);
     const limitMB = formatMB(this.maxMediaSize);
-    this.elements.recordBtn.innerHTML = `${stopIcon()} ${this.t.stop} (${usedMB} / ${limitMB})`;
+    this.elements.recordBtn.innerHTML = `${stopIcon()} ${this.t.stop} (${elapsed} · ${usedMB} / ${limitMB})`;
   }
 
   private setRecordingState(isRecording: boolean): void {
     this.recording = isRecording;
     if (isRecording) {
-      this.elements.recordBtn.innerHTML = `${stopIcon()} ${this.t.stop}`;
+      this.recordingStartTime = Date.now();
+      this.updateRecordingTimer();
+      this.recordingTimerInterval = setInterval(() => this.updateRecordingTimer(), 1000);
       this.elements.recordBtn.style.color = '#ef4444';
     } else {
+      if (this.recordingTimerInterval) {
+        clearInterval(this.recordingTimerInterval);
+        this.recordingTimerInterval = null;
+      }
       this.elements.recordBtn.innerHTML = `${videoIcon()} ${this.t.recordButton}`;
       this.elements.recordBtn.style.color = '';
     }
+  }
+
+  private updateRecordingTimer(): void {
+    const elapsedS = Math.floor((Date.now() - this.recordingStartTime) / 1000);
+
+    if (elapsedS >= MAX_RECORDING_DURATION_S) {
+      this.stopRecording();
+      return;
+    }
+
+    const minutes = Math.floor(elapsedS / 60);
+    const seconds = elapsedS % 60;
+    const elapsed = `${minutes}:${String(seconds).padStart(2, '0')}`;
+    const maxMin = Math.floor(MAX_RECORDING_DURATION_S / 60);
+    const maxSec = MAX_RECORDING_DURATION_S % 60;
+    const limit = `${maxMin}:${String(maxSec).padStart(2, '0')}`;
+    this.elements.recordBtn.innerHTML = `${stopIcon()} ${this.t.stop} (${elapsed} / ${limit})`;
   }
 
   private handleFileSelect(): void {

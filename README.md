@@ -63,9 +63,9 @@ const bugdump = Bugdump.init({
   captureNetworkBodies: false,            // Capture request/response bodies
   features: {
     screenshot: true,                     // Screenshot capture
-    screenshotMethod: 'auto',            // 'auto' (html2canvas) or 'native' (getDisplayMedia)
+    screenshotMethod: 'dom',              // 'dom' (html2canvas) or 'screen-capture' (getDisplayMedia)
     screenRecording: true,                // Screen recording
-    screenRecordingMethod: 'auto',       // 'auto' (rrweb) or 'native' (getDisplayMedia)
+    screenRecordingMethod: 'dom',         // 'dom' (rrweb) or 'screen-capture' (getDisplayMedia)
     sessionReplay: true,                  // Session replay collection
     attachments: true,                    // File attachments
   },
@@ -87,9 +87,9 @@ const bugdump = Bugdump.init({
 | Feature | Default | Description |
 |---|---|---|
 | `features.screenshot` | `true` | Screenshot capture button |
-| `features.screenshotMethod` | `'auto'` | `'auto'` uses html2canvas (no prompt). `'native'` uses getDisplayMedia (pixel-perfect, shows permission dialog) |
+| `features.screenshotMethod` | `'dom'` | `'dom'` uses html2canvas (no prompt). `'screen-capture'` uses getDisplayMedia (pixel-perfect, shows permission dialog) |
 | `features.screenRecording` | `true` | Screen recording button |
-| `features.screenRecordingMethod` | `'auto'` | `'auto'` uses rrweb (no prompt, DOM-based). `'native'` uses getDisplayMedia (pixel-perfect, shows permission dialog) |
+| `features.screenRecordingMethod` | `'dom'` | `'dom'` uses rrweb (no prompt, DOM-based). `'screen-capture'` uses getDisplayMedia (pixel-perfect, shows permission dialog) |
 | `features.sessionReplay` | `true` | Background session replay collection |
 | `features.attachments` | `true` | File attachment button |
 
@@ -149,9 +149,9 @@ Use `data-*` attributes to configure the widget. All attributes are optional exc
   data-hide-button="false"
   data-capture-network-bodies="false"
   data-screenshot="true"
-  data-screenshot-method="auto"
+  data-screenshot-method="dom"
   data-screen-recording="true"
-  data-screen-recording-method="auto"
+  data-screen-recording-method="dom"
   data-session-replay="true"
   data-attachments="true"
   data-translations='{"title":"Report a bug","sendButton":"Send report"}'
@@ -166,9 +166,9 @@ Use `data-*` attributes to configure the widget. All attributes are optional exc
 | `data-hide-button` | `hideButton` | `false` | Hide the floating button |
 | `data-capture-network-bodies` | `captureNetworkBodies` | `false` | Capture request/response bodies |
 | `data-screenshot` | `features.screenshot` | `true` | Screenshot capture button |
-| `data-screenshot-method` | `features.screenshotMethod` | `auto` | `auto` (html2canvas) or `native` (getDisplayMedia) |
+| `data-screenshot-method` | `features.screenshotMethod` | `dom` | `dom` (html2canvas) or `screen-capture` (getDisplayMedia) |
 | `data-screen-recording` | `features.screenRecording` | `true` | Screen recording button |
-| `data-screen-recording-method` | `features.screenRecordingMethod` | `auto` | `auto` (rrweb) or `native` (getDisplayMedia) |
+| `data-screen-recording-method` | `features.screenRecordingMethod` | `dom` | `dom` (rrweb) or `screen-capture` (getDisplayMedia) |
 | `data-session-replay` | `features.sessionReplay` | `true` | Background session replay collection |
 | `data-attachments` | `features.attachments` | `true` | File attachment button |
 | `data-translations` | `translations` | — | JSON string with translation overrides |

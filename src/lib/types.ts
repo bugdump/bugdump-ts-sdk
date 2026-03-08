@@ -1,4 +1,4 @@
-export type CaptureMethod = 'auto' | 'native';
+export type CaptureMethod = 'dom' | 'screen-capture';
 
 export interface BugdumpFeatures {
   screenshot?: boolean;
