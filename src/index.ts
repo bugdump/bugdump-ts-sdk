@@ -47,7 +47,7 @@ if (typeof document !== 'undefined') {
 
   if (currentScript) {
     const el = currentScript as HTMLElement;
-    const projectKey = el.getAttribute('data-api-key');
+    const apiKey = el.getAttribute('data-api-key');
     const endpoint = el.getAttribute('data-api-url');
     const captureNetworkBodies = el.getAttribute('data-capture-network-bodies') === 'true';
     const hideButton = el.getAttribute('data-hide-button') === 'true';
@@ -72,7 +72,7 @@ if (typeof document !== 'undefined') {
     }
 
     console.debug('[Bugdump] Auto-init config:', {
-      projectKey: projectKey ? `${projectKey.slice(0, 8)}…` : null,
+      apiKey: apiKey ? `${apiKey.slice(0, 8)}…` : null,
       endpoint: endpoint || '(default)',
       captureNetworkBodies,
       hideButton,
@@ -80,9 +80,9 @@ if (typeof document !== 'undefined') {
       features,
     });
 
-    if (projectKey) {
+    if (apiKey) {
       Bugdump.init({
-        projectKey,
+        apiKey,
         ...(endpoint && { endpoint }),
         ...(captureNetworkBodies && { captureNetworkBodies }),
         ...(hideButton && { hideButton }),
@@ -92,7 +92,7 @@ if (typeof document !== 'undefined') {
       });
       console.debug('[Bugdump] Auto-init: initialized successfully');
     } else {
-      console.warn('[Bugdump] Auto-init: script tag found but data-api-key is empty');
+      console.warn('[Bugdump] Auto-init: script tag found but data-api-key is missing or empty');
     }
   } else {
     console.debug('[Bugdump] Auto-init: no script tag with data-api-key found, skipping');

@@ -39,7 +39,7 @@ export const DEFAULT_TRANSLATIONS: Required<BugdumpTranslations> = {
 
 export function resolveConfig(config: BugdumpConfig): Required<BugdumpConfig> {
   return {
-    projectKey: config.projectKey,
+    apiKey: config.apiKey,
     endpoint: (config.endpoint || DEFAULT_ENDPOINT).replace(/\/+$/, ''),
     captureNetworkBodies: config.captureNetworkBodies ?? false,
     hideButton: config.hideButton ?? false,

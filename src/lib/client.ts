@@ -54,7 +54,7 @@ export class Bugdump {
 
     instance.state.config = resolved;
     instance.state.initialized = true;
-    instance.httpClient = new HttpClient(resolved.endpoint, resolved.projectKey);
+    instance.httpClient = new HttpClient(resolved.endpoint, resolved.apiKey);
     instance.networkCollector = new NetworkCollector({ captureBodies: resolved.captureNetworkBodies });
 
     if (Bugdump.isBrowser) {

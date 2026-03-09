@@ -38,7 +38,7 @@ export interface BugdumpTranslations {
 }
 
 export interface BugdumpConfig {
-  projectKey: string;
+  apiKey: string;
   endpoint?: string;
   captureNetworkBodies?: boolean;
   hideButton?: boolean;

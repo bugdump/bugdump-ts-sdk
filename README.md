@@ -37,7 +37,7 @@ yarn add @bugdump/sdk
 import { Bugdump } from '@bugdump/sdk';
 
 const bugdump = Bugdump.init({
-  projectKey: 'your-project-key',
+  apiKey: 'your-api-key',
 });
 ```
 
@@ -46,7 +46,7 @@ const bugdump = Bugdump.init({
 ```html
 <script src="https://bugdump.com/sdk/latest.js"></script>
 <script>
-  Bugdump.init({ projectKey: 'your-project-key' });
+  Bugdump.init({ apiKey: 'your-api-key' });
 </script>
 ```
 
@@ -56,7 +56,7 @@ const bugdump = Bugdump.init({
 
 ```typescript
 const bugdump = Bugdump.init({
-  projectKey: 'your-project-key',
+  apiKey: 'your-api-key',
   endpoint: 'https://api.bugdump.com',  // Custom API endpoint
   theme: 'auto',                         // Widget color theme
   hideButton: false,                      // Hide the floating button
@@ -74,7 +74,7 @@ const bugdump = Bugdump.init({
 
 | Option | Type | Default | Description |
 |---|---|---|---|
-| `projectKey` | `string` | — | **Required.** Your Bugdump project key |
+| `apiKey` | `string` | — | **Required.** Your Bugdump API key |
 | `endpoint` | `string` | `https://api.bugdump.com` | Custom API endpoint |
 | `theme` | `'light' \| 'dark' \| 'auto'` | `'auto'` | Widget color theme. `auto` follows the user's OS preference |
 | `hideButton` | `boolean` | `false` | Hide the floating button and trigger the widget programmatically |
@@ -99,7 +99,7 @@ Customize any widget UI string by passing a `translations` object. Only override
 
 ```typescript
 const bugdump = Bugdump.init({
-  projectKey: 'your-project-key',
+  apiKey: 'your-api-key',
   translations: {
     title: 'Сообщить об ошибке',
     descriptionPlaceholder: 'Опишите найденную ошибку...',
@@ -160,7 +160,7 @@ Use `data-*` attributes to configure the widget. All attributes are optional exc
 
 | Data Attribute | Config Equivalent | Default | Description |
 |---|---|---|---|
-| `data-api-key` | `projectKey` | — | **Required.** Your Bugdump project key |
+| `data-api-key` | `apiKey` | — | **Required.** Your Bugdump API key |
 | `data-api-url` | `endpoint` | `https://api.bugdump.com` | Custom API endpoint |
 | `data-theme` | `theme` | `auto` | Widget theme: `light`, `dark`, or `auto` |
 | `data-hide-button` | `hideButton` | `false` | Hide the floating button |
@@ -193,7 +193,7 @@ Hide the default floating button and trigger the report form from your own UI:
 import { Bugdump } from '@bugdump/sdk';
 
 const bugdump = Bugdump.init({
-  projectKey: 'your-project-key',
+  apiKey: 'your-api-key',
   hideButton: true,
 });
 
@@ -223,7 +223,7 @@ import { Bugdump } from '@bugdump/sdk';
 function App() {
   useEffect(() => {
     const bugdump = Bugdump.init({
-      projectKey: 'your-project-key',
+      apiKey: 'your-api-key',
       hideButton: true,
     });
 
@@ -262,7 +262,7 @@ import { Bugdump } from '@bugdump/sdk';
 // Initialize only after the user has logged in
 function onUserLogin(user: { id: string; name: string; email: string }) {
   const bugdump = Bugdump.init({
-    projectKey: 'your-project-key',
+    apiKey: 'your-api-key',
   });
 
   bugdump.identify({
@@ -291,7 +291,7 @@ function App() {
     if (!user) return;
 
     const bugdump = Bugdump.init({
-      projectKey: 'your-project-key',
+      apiKey: 'your-api-key',
     });
 
     bugdump.identify({
@@ -320,7 +320,7 @@ When using the `<script>` tag, **do not** use the `data-api-key` attribute (whic
 <script>
   // Call this after your user has logged in
   function initBugdump(user) {
-    var bugdump = Bugdump.init({ projectKey: 'your-project-key' });
+    const bugdump = Bugdump.init({ apiKey: 'your-api-key' });
 
     bugdump.identify({
       id: user.id,
@@ -331,7 +331,7 @@ When using the `<script>` tag, **do not** use the `data-api-key` attribute (whic
 
   // Call this on logout
   function destroyBugdump() {
-    var instance = Bugdump.getInstance();
+    const instance = Bugdump.getInstance();
     if (instance) instance.destroy();
   }
 
@@ -369,6 +369,15 @@ bugdump.isWidgetOpen();
 // Collect telemetry snapshot without submitting
 const telemetry = bugdump.collectTelemetry();
 
+// Get the resolved config
+bugdump.getConfig();
+
+// Get the current user context
+bugdump.getUser();
+
+// Get the custom context
+bugdump.getContext();
+
 // Clean up and remove the widget
 bugdump.destroy();
 ```
@@ -396,7 +405,7 @@ try {
   await bugdump.getHttpClient().submitReport(payload);
 } catch (error) {
   if (error instanceof BugdumpApiError) {
-    console.error(`Error ${error.status}: ${error.message}`);
+    console.error(`Error ${error.statusCode}: ${error.message}`);
   }
 }
 ```
