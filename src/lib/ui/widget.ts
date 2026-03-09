@@ -68,6 +68,10 @@ export class Widget {
     this.panel.setRemoveBranding(remove);
   }
 
+  setPortalUrl(url: string | null | undefined): void {
+    this.panel.setPortalUrl(url);
+  }
+
   toggle(): void {
     if (this.open) {
       this.close();

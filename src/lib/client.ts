@@ -76,6 +76,7 @@ export class Bugdump {
           screenRecording: resolved.features.screenRecording && widgetConfig.features.screenRecording,
         });
         instance.widget?.setRemoveBranding(widgetConfig.features.removeBranding);
+        instance.widget?.setPortalUrl(widgetConfig.portalUrl);
         if (!widgetConfig.features.sessionReplay) {
           instance.sessionReplayCollector.stop();
         }

@@ -100,6 +100,7 @@ export interface WidgetConfig {
     screenRecording: boolean;
     removeBranding: boolean;
   };
+  portalUrl?: string | null;
 }
 
 export interface HttpErrorResponse {

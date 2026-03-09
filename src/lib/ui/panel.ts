@@ -139,6 +139,29 @@ export class Panel {
     }
   }
 
+  setPortalUrl(url: string | null | undefined): void {
+    const footer = this.elements.root.querySelector<HTMLElement>('.bd-panel__footer');
+    if (!footer) return;
+
+    const existing = footer.querySelector<HTMLElement>('[data-role="portal-link"]');
+    if (url) {
+      if (existing) {
+        (existing as HTMLAnchorElement).href = url;
+      } else {
+        const link = document.createElement('a');
+        link.dataset.role = 'portal-link';
+        link.href = url;
+        link.target = '_blank';
+        link.rel = 'noopener';
+        link.className = 'bd-branding';
+        link.textContent = 'View reports';
+        footer.insertBefore(link, footer.firstChild);
+      }
+    } else if (existing) {
+      existing.remove();
+    }
+  }
+
   updateFeatures(features: Partial<PanelFeatures>): void {
     Object.assign(this.features, features);
     this.applyFeatures();

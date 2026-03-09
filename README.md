@@ -10,6 +10,7 @@ Official TypeScript SDK for [Bugdump](https://bugdump.com) - embed a bug reporti
 - **TypeScript-first** - Full type definitions out of the box
 - **Shadow DOM isolated** - Widget styles never leak into your app
 - **Auto-init** - Single script tag with `data-api-key`, no JS required
+- **Public portal link** - Automatically shows a "View reports" link in the widget footer when the public portal is enabled for your project
 
 ## Installation
 
@@ -182,6 +183,12 @@ The widget supports three theme modes:
 - **`dark`** — Always use the dark theme
 
 > **Note:** Your account plan may also restrict certain features server-side (e.g., screen recording is only available on Pro and Ultra plans). The widget respects both local config and server-side limits.
+
+## Public Portal Link
+
+When the **Public Portal** is enabled for your project (via Project Settings → Public Portal), the widget footer automatically shows a **"View reports"** link that opens your project's public portal in a new tab.
+
+This requires no SDK configuration — the portal URL is fetched automatically from the server when the widget initializes. Enable or disable the portal at any time from your Bugdump dashboard; the widget picks up the change on next page load.
 
 ## Headless Mode (No Floating Button)
 
