@@ -215,10 +215,9 @@ export class Bugdump {
         this.widget?.setUploadProgress(currentIndex, totalUploads, percent);
       });
 
-      const attType = attachment.type === 'file' ? 'screenshot' : attachment.type;
       uploadedAttachments.push({
         fileId: uploadResponse.fileId,
-        type: attType as 'screenshot' | 'recording' | 'voice_note' | 'session_replay',
+        type: attachment.type,
         metadata: attachment.textAnnotations ? { textAnnotations: attachment.textAnnotations } : undefined,
       });
     }

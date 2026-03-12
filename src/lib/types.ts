@@ -71,7 +71,7 @@ export interface ReportPayload {
   textAnnotations?: Array<{ text: string; x: number; y: number }>;
   attachments?: Array<{
     fileId: string;
-    type: 'screenshot' | 'recording' | 'voice_note' | 'session_replay';
+    type: 'screenshot' | 'recording' | 'voice_note' | 'session_replay' | 'file';
     metadata?: Record<string, unknown>;
   }>;
 }
