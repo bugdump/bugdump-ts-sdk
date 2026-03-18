@@ -52,6 +52,7 @@ if (typeof document !== 'undefined') {
     const captureNetworkBodies = el.getAttribute('data-capture-network-bodies') === 'true';
     const hideButton = el.getAttribute('data-hide-button') === 'true';
     const theme = el.getAttribute('data-theme') as 'light' | 'dark' | 'auto' | null;
+    const icon = el.getAttribute('data-icon');
 
     const features: Record<string, boolean | string> = {};
     if (el.hasAttribute('data-screenshot')) features.screenshot = el.getAttribute('data-screenshot') !== 'false';
@@ -87,6 +88,7 @@ if (typeof document !== 'undefined') {
         ...(captureNetworkBodies && { captureNetworkBodies }),
         ...(hideButton && { hideButton }),
         ...(theme && { theme }),
+        ...(icon && { icon }),
         ...(Object.keys(features).length > 0 && { features }),
         ...(translations && { translations }),
       });

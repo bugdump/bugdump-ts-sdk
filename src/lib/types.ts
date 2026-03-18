@@ -35,7 +35,13 @@ export interface BugdumpTranslations {
   undo?: string;
   cancel?: string;
   done?: string;
+  badgeScreenshot?: string;
+  badgeRecording?: string;
+  badgeReplay?: string;
+  badgeVoiceNote?: string;
 }
+
+export type BugdumpIcon = 'bug' | 'chat' | 'feedback' | 'lightning';
 
 export interface BugdumpConfig {
   apiKey: string;
@@ -43,6 +49,7 @@ export interface BugdumpConfig {
   captureNetworkBodies?: boolean;
   hideButton?: boolean;
   theme?: BugdumpTheme;
+  icon?: string;
   features?: BugdumpFeatures;
   translations?: BugdumpTranslations;
 }
@@ -68,7 +75,7 @@ export interface ReportPayload {
   networkRequests?: Record<string, unknown>[];
   performance?: Record<string, unknown>;
   customContext?: Record<string, unknown>;
-  textAnnotations?: Array<{ text: string; x: number; y: number }>;
+  textAnnotations?: Array<{ text: string }>;
   attachments?: Array<{
     fileId: string;
     type: 'screenshot' | 'recording' | 'voice_note' | 'session_replay' | 'file';

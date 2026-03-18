@@ -1,5 +1,5 @@
 import { createStyles } from './styles';
-import { bugIcon, closeIcon } from './icons';
+import { closeIcon, resolveIcon } from './icons';
 import { Panel } from './panel';
 import type { PanelSubmitData, PanelFeatures } from './panel';
 import type { BugdumpTheme, BugdumpTranslations } from '../types';
@@ -11,10 +11,11 @@ export class Widget {
   private triggerBtn: HTMLButtonElement;
   private panel: Panel;
   private open = false;
+  private triggerIconHtml: string;
 
   private onSubmit: ((data: PanelSubmitData) => Promise<void>) | null = null;
 
-  constructor(options?: { hideButton?: boolean; features?: PanelFeatures; theme?: BugdumpTheme; translations?: BugdumpTranslations }) {
+  constructor(options?: { hideButton?: boolean; icon?: string; features?: PanelFeatures; theme?: BugdumpTheme; translations?: BugdumpTranslations }) {
     this.host = document.createElement('bugdump-widget');
     this.host.style.cssText = 'all:initial;position:fixed;z-index:2147483647;';
 
@@ -25,6 +26,7 @@ export class Widget {
     style.textContent = createStyles();
     this.shadowRoot.appendChild(style);
 
+    this.triggerIconHtml = resolveIcon(options?.icon);
     this.triggerBtn = this.createTriggerButton(options?.translations?.title);
     if (options?.hideButton) {
       this.triggerBtn.style.display = 'none';
@@ -80,9 +82,13 @@ export class Widget {
     }
   }
 
-  openPanel(): void {
+  async openPanel(): Promise<void> {
     if (this.open) return;
     this.open = true;
+    this.triggerBtn.disabled = true;
+    this.triggerBtn.innerHTML = '<div class="bd-spinner"></div>';
+    await this.panel.attachAutoScreenshot();
+    this.triggerBtn.disabled = false;
     this.triggerBtn.classList.add('bd-trigger--open');
     this.triggerBtn.innerHTML = closeIcon();
     this.panel.show();
@@ -92,7 +98,7 @@ export class Widget {
     if (!this.open) return;
     this.open = false;
     this.triggerBtn.classList.remove('bd-trigger--open');
-    this.triggerBtn.innerHTML = bugIcon();
+    this.triggerBtn.innerHTML = this.triggerIconHtml;
     this.panel.hide();
   }
 
@@ -118,7 +124,7 @@ export class Widget {
     const btn = document.createElement('button');
     btn.className = 'bd-trigger';
     btn.setAttribute('aria-label', title ?? 'Report a bug');
-    btn.innerHTML = bugIcon();
+    btn.innerHTML = this.triggerIconHtml;
     btn.addEventListener('click', () => this.toggle());
     return btn;
   }

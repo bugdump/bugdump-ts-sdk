@@ -16,6 +16,8 @@ import {
   blurToolIcon,
   undoIcon,
   checkIcon,
+  replayIcon,
+  micIcon,
 } from './icons';
 import { captureScreenshot, captureScreenshotNative } from '../capture/screenshot';
 import { AnnotationOverlay, renderOperationsToCanvas } from '../capture/annotation';
@@ -26,13 +28,11 @@ import type { SessionReplayCollector } from '../collectors/session-replay';
 
 export interface TextAnnotationMeta {
   text: string;
-  x: number;
-  y: number;
 }
 
 export interface Attachment {
   id: string;
-  type: 'screenshot' | 'recording' | 'voice_note' | 'file';
+  type: 'screenshot' | 'recording' | 'voice_note' | 'session_replay' | 'file';
   blob: Blob;
   name: string;
   thumbnailUrl?: string;
@@ -107,6 +107,7 @@ export class Panel {
   private onClose: (() => void) | null = null;
 
   private sessionReplayCollector: SessionReplayCollector | null = null;
+  private sessionReplayAttached = false;
 
   constructor(private shadowRoot: ShadowRoot, features?: PanelFeatures, translations?: BugdumpTranslations) {
     this.features = features ?? { screenshot: true, screenshotMethod: 'dom', screenRecording: true, screenRecordingMethod: 'dom', attachments: true };
@@ -140,10 +141,10 @@ export class Panel {
   }
 
   setPortalUrl(url: string | null | undefined): void {
-    const footer = this.elements.root.querySelector<HTMLElement>('.bd-panel__footer');
-    if (!footer) return;
+    const linksContainer = this.elements.root.querySelector<HTMLElement>('.bd-footer__links');
+    if (!linksContainer) return;
 
-    const existing = footer.querySelector<HTMLElement>('[data-role="portal-link"]');
+    const existing = linksContainer.querySelector<HTMLElement>('[data-role="portal-link"]');
     if (url) {
       if (existing) {
         (existing as HTMLAnchorElement).href = url;
@@ -155,7 +156,7 @@ export class Panel {
         link.rel = 'noopener';
         link.className = 'bd-branding';
         link.textContent = 'View reports';
-        footer.insertBefore(link, footer.firstChild);
+        linksContainer.insertBefore(link, linksContainer.firstChild);
       }
     } else if (existing) {
       existing.remove();
@@ -174,9 +175,57 @@ export class Panel {
   }
 
   show(): void {
+    if (!this.sessionReplayAttached && this.sessionReplayCollector) {
+      this.attachSessionReplay();
+    }
     this.visible = true;
     this.elements.root.classList.add('bd-panel--visible');
     this.elements.textarea.focus();
+  }
+
+  attachSessionReplay(): void {
+    if (!this.sessionReplayCollector) return;
+
+    const events = this.sessionReplayCollector.getSessionReplay();
+    this.sessionReplayCollector.stop();
+
+    this.sessionReplayAttached = true;
+
+    if (events.length === 0) return;
+
+    const blob = new Blob([JSON.stringify(events)], { type: 'application/json' });
+    this.addAttachment({
+      id: generateAttachmentId(),
+      type: 'session_replay',
+      blob,
+      name: `session-replay-${Date.now()}.json`,
+    });
+
+    this.sessionReplayCollector.start();
+  }
+
+  async attachAutoScreenshot(): Promise<void> {
+    try {
+      const result = await captureScreenshot({
+        filter: (node) => {
+          if (node instanceof HTMLElement && node.tagName.toLowerCase() === 'bugdump-widget') {
+            return false;
+          }
+          return true;
+        },
+      });
+
+      const thumbnailUrl = URL.createObjectURL(result.blob);
+      this.addAttachment({
+        id: generateAttachmentId(),
+        type: 'screenshot',
+        blob: result.blob,
+        name: `screenshot-${Date.now()}.jpg`,
+        thumbnailUrl,
+      });
+    } catch (err) {
+      console.warn('[Bugdump] Auto screenshot capture failed:', err);
+    }
   }
 
   hide(): void {
@@ -188,12 +237,20 @@ export class Panel {
     return this.visible;
   }
 
+  private autoResizeTextarea(): void {
+    const el = this.elements.textarea;
+    el.style.height = 'auto';
+    el.style.height = `${el.scrollHeight}px`;
+  }
+
   reset(): void {
     this.elements.textarea.value = '';
+    this.elements.textarea.style.height = '';
     this.elements.nameInput.value = '';
     this.elements.emailInput.value = '';
     this.revokeAttachmentUrls();
     this.attachments = [];
+    this.sessionReplayAttached = false;
     this.renderAttachments();
     this.showFormView();
     this.setSubmitting(false);
@@ -225,7 +282,7 @@ export class Panel {
         <button class="bd-panel__close" aria-label="Close">${closeIcon()}</button>
       </div>
       <div class="bd-panel__body" data-role="body">
-        <textarea class="bd-textarea" placeholder="${this.t.descriptionPlaceholder}" rows="4"></textarea>
+        <textarea class="bd-textarea" placeholder="${this.t.descriptionPlaceholder}" rows="2"></textarea>
         <div class="bd-action-bar">
           <button class="bd-action-btn" data-action="attach">${paperclipIcon()} ${this.t.attachButton}</button>
           <button class="bd-action-btn" data-action="screenshot">${cameraIcon()} ${this.t.screenshotButton}</button>
@@ -247,7 +304,9 @@ export class Panel {
         <div class="bd-success__subtitle">${this.t.successSubtitle}</div>
       </div>
       <div class="bd-panel__footer">
-        <a class="bd-branding" data-role="branding" href="https://bugdump.com?ref=widget" target="_blank" rel="noopener">Powered by Bugdump</a>
+        <div class="bd-footer__links">
+          <a class="bd-branding" data-role="branding" href="https://bugdump.com?ref=widget" target="_blank" rel="noopener">Powered by Bugdump</a>
+        </div>
         <button class="bd-send-btn" data-action="send">${sendIcon()} ${this.t.sendButton}</button>
       </div>
     `;
@@ -285,12 +344,23 @@ export class Panel {
     this.elements.fileInput.addEventListener('change', () => this.handleFileSelect());
     this.elements.reporterToggle.addEventListener('click', () => this.toggleReporter());
 
+    this.elements.textarea.addEventListener('input', () => {
+      this.autoResizeTextarea();
+    });
+
     this.elements.attachmentsList.addEventListener('click', (e) => {
       const target = e.target as HTMLElement;
       const removeBtn = target.closest<HTMLButtonElement>('[data-remove-id]');
       if (removeBtn) {
         const id = removeBtn.dataset.removeId!;
         this.removeAttachment(id);
+        return;
+      }
+
+      const annotateImg = target.closest<HTMLElement>('[data-annotate-id]');
+      if (annotateImg) {
+        const id = annotateImg.dataset.annotateId!;
+        this.annotateAttachment(id);
       }
     });
   }
@@ -366,6 +436,7 @@ export class Panel {
     originalBlob: Blob,
     width: number,
     height: number,
+    existingAttachmentId?: string,
   ): void {
     this.annotationContainer = document.createElement('div');
     this.annotationContainer.style.cssText =
@@ -443,12 +514,26 @@ export class Panel {
         this.destroyAnnotation();
         this.show();
       } else if (action === 'confirm') {
-        this.finishAnnotation(originalBlob, image);
+        this.finishAnnotation(originalBlob, image, existingAttachmentId);
       }
     });
   }
 
-  private async finishAnnotation(originalBlob: Blob, image: HTMLImageElement): Promise<void> {
+  private async annotateAttachment(id: string): Promise<void> {
+    const attachment = this.attachments.find((a) => a.id === id);
+    if (!attachment) return;
+
+    const imageUrl = URL.createObjectURL(attachment.blob);
+    try {
+      const image = await loadImage(imageUrl);
+      this.hide();
+      this.showAnnotationOverlay(image, attachment.blob, image.naturalWidth, image.naturalHeight, id);
+    } catch {
+      URL.revokeObjectURL(imageUrl);
+    }
+  }
+
+  private async finishAnnotation(originalBlob: Blob, image: HTMLImageElement, existingAttachmentId?: string): Promise<void> {
     const operations = this.annotationOverlay?.getOperations() ?? [];
 
     let blob: Blob;
@@ -476,8 +561,6 @@ export class Panel {
       if (textOps.length > 0) {
         textAnnotations = textOps.map((op) => ({
           text: op.text,
-          x: Math.round(op.position.x),
-          y: Math.round(op.position.y),
         }));
       }
     } else {
@@ -485,14 +568,32 @@ export class Panel {
     }
 
     const thumbnailUrl = URL.createObjectURL(blob);
-    this.addAttachment({
-      id: generateAttachmentId(),
-      type: 'screenshot',
-      blob,
-      name: `screenshot-${Date.now()}.jpg`,
-      thumbnailUrl,
-      textAnnotations,
-    });
+
+    if (existingAttachmentId) {
+      const index = this.attachments.findIndex((a) => a.id === existingAttachmentId);
+      if (index !== -1) {
+        const existing = this.attachments[index]!;
+        if (existing.thumbnailUrl) {
+          URL.revokeObjectURL(existing.thumbnailUrl);
+        }
+        this.attachments[index] = {
+          ...existing,
+          blob,
+          thumbnailUrl,
+          textAnnotations,
+        };
+        this.renderAttachments();
+      }
+    } else {
+      this.addAttachment({
+        id: generateAttachmentId(),
+        type: 'screenshot',
+        blob,
+        name: `screenshot-${Date.now()}.jpg`,
+        thumbnailUrl,
+        textAnnotations,
+      });
+    }
 
     URL.revokeObjectURL(image.src);
     this.destroyAnnotation();
@@ -723,22 +824,46 @@ export class Panel {
       const el = document.createElement('div');
       el.className = 'bd-attachment';
 
+      const isAnnotatable = att.type === 'screenshot' || (att.type === 'file' && att.blob.type.startsWith('image/'));
+
+      if (isAnnotatable) {
+        el.dataset.annotatable = '';
+      }
+
+      const inner = document.createElement('div');
+      inner.className = 'bd-attachment__inner';
+
       if (att.thumbnailUrl && att.type !== 'recording') {
         const img = document.createElement('img');
         img.src = att.thumbnailUrl;
         img.alt = att.name;
-        el.appendChild(img);
+        if (isAnnotatable) {
+          img.dataset.annotateId = att.id;
+        }
+        inner.appendChild(img);
       } else if (att.type === 'recording' && att.thumbnailUrl) {
         const video = document.createElement('video');
         video.src = att.thumbnailUrl;
         video.muted = true;
-        el.appendChild(video);
+        inner.appendChild(video);
+      } else if (att.type === 'session_replay') {
+        const iconDiv = document.createElement('div');
+        iconDiv.className = 'bd-attachment__icon';
+        iconDiv.innerHTML = replayIcon();
+        inner.appendChild(iconDiv);
       } else {
         const iconDiv = document.createElement('div');
         iconDiv.className = 'bd-attachment__icon';
         iconDiv.innerHTML = fileIcon();
-        el.appendChild(iconDiv);
+        inner.appendChild(iconDiv);
       }
+
+      const badge = document.createElement('div');
+      badge.className = 'bd-attachment__badge';
+      badge.innerHTML = this.getAttachmentBadgeContent(att);
+      inner.appendChild(badge);
+
+      el.appendChild(inner);
 
       const removeBtn = document.createElement('button');
       removeBtn.className = 'bd-attachment__remove';
@@ -748,6 +873,21 @@ export class Panel {
       el.appendChild(removeBtn);
 
       container.appendChild(el);
+    }
+  }
+
+  private getAttachmentBadgeContent(att: Attachment): string {
+    switch (att.type) {
+      case 'screenshot':
+        return `${cameraIcon()} ${this.t.badgeScreenshot}`;
+      case 'recording':
+        return `${videoIcon()} ${this.t.badgeRecording}`;
+      case 'session_replay':
+        return `${replayIcon()} ${this.t.badgeReplay}`;
+      case 'voice_note':
+        return `${micIcon()} ${this.t.badgeVoiceNote}`;
+      case 'file':
+        return `${fileIcon()} ${att.name}`;
     }
   }
 

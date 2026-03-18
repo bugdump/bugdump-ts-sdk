@@ -35,6 +35,10 @@ export const DEFAULT_TRANSLATIONS: Required<BugdumpTranslations> = {
   undo: 'Undo',
   cancel: 'Cancel',
   done: 'Done',
+  badgeScreenshot: 'Screenshot',
+  badgeRecording: 'Recording',
+  badgeReplay: 'Replay',
+  badgeVoiceNote: 'Voice note',
 };
 
 export function resolveConfig(config: BugdumpConfig): Required<BugdumpConfig> {
@@ -44,6 +48,7 @@ export function resolveConfig(config: BugdumpConfig): Required<BugdumpConfig> {
     captureNetworkBodies: config.captureNetworkBodies ?? false,
     hideButton: config.hideButton ?? false,
     theme: config.theme ?? 'auto',
+    icon: config.icon ?? '',
     features: { ...DEFAULT_FEATURES, ...config.features },
     translations: { ...DEFAULT_TRANSLATIONS, ...config.translations },
   };

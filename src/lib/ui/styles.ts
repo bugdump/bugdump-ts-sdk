@@ -89,10 +89,28 @@ export function createStyles(): string {
       transform: scale(0.97);
     }
 
+    .bd-trigger:disabled {
+      cursor: default;
+      opacity: 0.8;
+    }
+
+    .bd-trigger:disabled:hover {
+      transform: none;
+      background: var(--bd-primary);
+      box-shadow: 0 4px 12px var(--bd-shadow);
+    }
+
     .bd-trigger svg {
       width: 24px;
       height: 24px;
       fill: currentColor;
+    }
+
+    .bd-trigger img {
+      width: 24px;
+      height: 24px;
+      object-fit: contain;
+      pointer-events: none;
     }
 
     .bd-trigger--open svg {
@@ -177,11 +195,13 @@ export function createStyles(): string {
 
     .bd-textarea {
       width: 100%;
-      min-height: 100px;
+      min-height: 52px;
+      max-height: 160px;
       padding: 10px 12px;
       border: 1px solid var(--bd-border);
       border-radius: 8px;
-      resize: vertical;
+      resize: none;
+      overflow-y: auto;
       font-family: inherit;
       font-size: 14px;
       line-height: 1.5;
@@ -239,18 +259,25 @@ export function createStyles(): string {
 
     .bd-attachments {
       display: flex;
-      gap: 8px;
+      gap: 10px;
       flex-wrap: wrap;
+      padding: 4px;
     }
 
     .bd-attachment {
       position: relative;
-      width: 64px;
-      height: 64px;
-      border-radius: 8px;
-      overflow: hidden;
+      width: 72px;
+      height: 72px;
+      border-radius: 10px;
       border: 1px solid var(--bd-border);
       background: var(--bd-bg-secondary);
+    }
+
+    .bd-attachment__inner {
+      width: 100%;
+      height: 100%;
+      border-radius: 9px;
+      overflow: hidden;
     }
 
     .bd-attachment img,
@@ -258,6 +285,7 @@ export function createStyles(): string {
       width: 100%;
       height: 100%;
       object-fit: cover;
+      display: block;
     }
 
     .bd-attachment__icon {
@@ -276,8 +304,8 @@ export function createStyles(): string {
 
     .bd-attachment__remove {
       position: absolute;
-      top: -4px;
-      right: -4px;
+      top: -6px;
+      right: -6px;
       width: 20px;
       height: 20px;
       border-radius: 50%;
@@ -292,6 +320,7 @@ export function createStyles(): string {
       line-height: 1;
       padding: 0;
       transition: background-color 0.15s;
+      z-index: 1;
     }
 
     .bd-attachment__remove:hover {
@@ -301,6 +330,41 @@ export function createStyles(): string {
     .bd-attachment__remove svg {
       width: 10px;
       height: 10px;
+    }
+
+    .bd-attachment__badge {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      display: flex;
+      align-items: center;
+      gap: 3px;
+      padding: 3px 5px;
+      background: rgba(0, 0, 0, 0.65);
+      color: #ffffff;
+      font-size: 9px;
+      line-height: 1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      pointer-events: none;
+      border-radius: 0 0 9px 9px;
+    }
+
+    .bd-attachment__badge svg {
+      width: 10px;
+      height: 10px;
+      flex-shrink: 0;
+    }
+
+    .bd-attachment[data-annotatable] img {
+      cursor: pointer;
+      transition: filter 0.15s;
+    }
+
+    .bd-attachment[data-annotatable] img:hover {
+      filter: brightness(0.85);
     }
 
     .bd-reporter-toggle {
@@ -368,14 +432,20 @@ export function createStyles(): string {
       border-top: 1px solid var(--bd-border);
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 12px;
+    }
+
+    .bd-footer__links {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      margin-right: auto;
     }
 
     .bd-branding {
       font-size: 11px;
       color: var(--bd-text-secondary);
       text-decoration: none;
-      margin-right: auto;
       opacity: 0.6;
       transition: opacity 0.15s ease;
     }

@@ -60,6 +60,7 @@ const bugdump = Bugdump.init({
   apiKey: 'your-api-key',
   endpoint: 'https://api.bugdump.com',  // Custom API endpoint
   theme: 'auto',                         // Widget color theme
+  icon: 'bug',                            // Trigger button icon
   hideButton: false,                      // Hide the floating button
   captureNetworkBodies: false,            // Capture request/response bodies
   features: {
@@ -79,6 +80,7 @@ const bugdump = Bugdump.init({
 | `endpoint` | `string` | `https://api.bugdump.com` | Custom API endpoint |
 | `theme` | `'light' \| 'dark' \| 'auto'` | `'auto'` | Widget color theme. `auto` follows the user's OS preference |
 | `hideButton` | `boolean` | `false` | Hide the floating button and trigger the widget programmatically |
+| `icon` | `string` | `'bug'` | Custom trigger button icon (see [Custom Icon](#custom-icon) below) |
 | `captureNetworkBodies` | `boolean` | `false` | Include request/response bodies in network logs |
 | `features` | `object` | all `true` | Enable/disable widget features (see below) |
 | `translations` | `object` | English defaults | Override widget UI strings (see below) |
@@ -147,6 +149,7 @@ Use `data-*` attributes to configure the widget. All attributes are optional exc
   data-api-key="your-api-key"
   data-api-url="https://api.bugdump.com"
   data-theme="auto"
+  data-icon="bug"
   data-hide-button="false"
   data-capture-network-bodies="false"
   data-screenshot="true"
@@ -165,6 +168,7 @@ Use `data-*` attributes to configure the widget. All attributes are optional exc
 | `data-api-url` | `endpoint` | `https://api.bugdump.com` | Custom API endpoint |
 | `data-theme` | `theme` | `auto` | Widget theme: `light`, `dark`, or `auto` |
 | `data-hide-button` | `hideButton` | `false` | Hide the floating button |
+| `data-icon` | `icon` | `bug` | Custom trigger button icon (predefined name, URL, SVG, or emoji) |
 | `data-capture-network-bodies` | `captureNetworkBodies` | `false` | Capture request/response bodies |
 | `data-screenshot` | `features.screenshot` | `true` | Screenshot capture button |
 | `data-screenshot-method` | `features.screenshotMethod` | `dom` | `dom` (html2canvas) or `screen-capture` (getDisplayMedia) |
@@ -183,6 +187,48 @@ The widget supports three theme modes:
 - **`dark`** — Always use the dark theme
 
 > **Note:** Your account plan may also restrict certain features server-side (e.g., screen recording is only available on Pro and Ultra plans). The widget respects both local config and server-side limits.
+
+### Custom Icon
+
+Customize the floating button icon. The `icon` option accepts a string and auto-detects the type:
+
+```typescript
+// Predefined icon name
+Bugdump.init({ apiKey: '...', icon: 'chat' });
+
+// Custom SVG string
+Bugdump.init({ apiKey: '...', icon: '<svg viewBox="0 0 24 24">...</svg>' });
+
+// Image URL
+Bugdump.init({ apiKey: '...', icon: 'https://example.com/icon.png' });
+
+// Emoji
+Bugdump.init({ apiKey: '...', icon: '🐛' });
+```
+
+Or via script tag:
+
+```html
+<script src="https://bugdump.com/sdk/latest.js" data-api-key="your-api-key" data-icon="feedback"></script>
+```
+
+#### Predefined Icons
+
+| Name | Description |
+|---|---|
+| `bug` | Bug icon (default) |
+| `chat` | Speech bubble |
+| `feedback` | Message bubble with text lines |
+| `lightning` | Lightning bolt |
+
+#### Detection Rules
+
+| Input | Detected As |
+|---|---|
+| `bug`, `chat`, `feedback`, `lightning` | Predefined icon |
+| Starts with `<` | HTML/SVG string |
+| Starts with `http://`, `https://`, `//`, or `data:` | Image URL |
+| Anything else | Text/emoji |
 
 ## Public Portal Link
 

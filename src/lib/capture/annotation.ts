@@ -330,6 +330,7 @@ export class AnnotationOverlay {
   }
 
   addTextAtPosition(position: Point, text: string): void {
+    const scaledFontSize = this.getScaledFontSize();
     const op: TextOperation = {
       id: generateId(),
       tool: 'text',
@@ -337,11 +338,17 @@ export class AnnotationOverlay {
       lineWidth: this.lineWidth,
       position,
       text,
-      fontSize: this.fontSize,
+      fontSize: scaledFontSize,
       timestamp: Date.now(),
     };
     this.operations.push(op);
     this.redraw();
+  }
+
+  private getScaledFontSize(): number {
+    const rect = this.canvas.getBoundingClientRect();
+    const scale = rect.width > 0 ? this.width / rect.width : 1;
+    return Math.round(this.fontSize * scale);
   }
 
   destroy(): void {
@@ -477,7 +484,10 @@ export class AnnotationOverlay {
     this.container.appendChild(input);
     input.focus();
 
+    let committed = false;
     const commit = () => {
+      if (committed) return;
+      committed = true;
       const text = input.value.trim();
       if (text) {
         this.addTextAtPosition(position, text);
@@ -490,6 +500,7 @@ export class AnnotationOverlay {
         e.preventDefault();
         commit();
       } else if (e.key === 'Escape') {
+        committed = true;
         this.dismissActiveTextInput();
       }
     });

@@ -174,6 +174,7 @@ export class Bugdump {
     const features = this.state.config?.features;
     this.widget = new Widget({
       hideButton: this.state.config?.hideButton,
+      icon: this.state.config?.icon,
       theme: this.state.config?.theme,
       features: features
         ? {
@@ -197,8 +198,7 @@ export class Bugdump {
 
     const uploadedAttachments: ReportPayload['attachments'] = [];
 
-    const hasReplay = telemetry.sessionReplayEvents.length > 0;
-    const totalUploads = data.attachments.length + (hasReplay ? 1 : 0);
+    const totalUploads = data.attachments.length;
     let uploadIndex = 0;
 
     for (const attachment of data.attachments) {
@@ -220,31 +220,6 @@ export class Bugdump {
         type: attachment.type,
         metadata: attachment.textAnnotations ? { textAnnotations: attachment.textAnnotations } : undefined,
       });
-    }
-
-    if (hasReplay) {
-      uploadIndex++;
-      const currentIndex = uploadIndex;
-
-      try {
-        const replayBlob = new Blob([JSON.stringify(telemetry.sessionReplayEvents)], {
-          type: 'application/json',
-        });
-        const uploadResponse = await httpClient.requestUpload({
-          originalName: `session-replay-${Date.now()}.json`,
-          mimeType: 'application/json',
-          size: replayBlob.size,
-        });
-        await httpClient.uploadFileToS3(uploadResponse.url, uploadResponse.fields, replayBlob, (percent) => {
-          this.widget?.setUploadProgress(currentIndex, totalUploads, percent);
-        });
-        uploadedAttachments.push({
-          fileId: uploadResponse.fileId,
-          type: 'session_replay',
-        });
-      } catch {
-        console.warn('[Bugdump] Session replay upload failed, submitting report without it.');
-      }
     }
 
     const payload: ReportPayload = {
