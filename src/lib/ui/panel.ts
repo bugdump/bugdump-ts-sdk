@@ -37,6 +37,7 @@ export interface Attachment {
   name: string;
   thumbnailUrl?: string;
   textAnnotations?: TextAnnotationMeta[];
+  durationSeconds?: number;
 }
 
 export interface PanelSubmitData {
@@ -186,6 +187,8 @@ export class Panel {
   attachSessionReplay(): void {
     if (!this.sessionReplayCollector) return;
 
+    // Always uses rrweb (library-based) regardless of screenRecordingMethod config —
+    // no user permission needed for the automatic session replay capture.
     const events = this.sessionReplayCollector.getSessionReplay();
     this.sessionReplayCollector.stop();
 
@@ -193,12 +196,18 @@ export class Panel {
 
     if (events.length === 0) return;
 
+    const durationMs = events.length >= 2
+      ? events[events.length - 1]!.timestamp - events[0]!.timestamp
+      : 0;
+    const durationS = Math.round(durationMs / 1000);
+
     const blob = new Blob([JSON.stringify(events)], { type: 'application/json' });
     this.addAttachment({
       id: generateAttachmentId(),
       type: 'session_replay',
       blob,
       name: `session-replay-${Date.now()}.json`,
+      durationSeconds: durationS,
     });
 
     this.sessionReplayCollector.start();
@@ -206,6 +215,9 @@ export class Panel {
 
   async attachAutoScreenshot(): Promise<void> {
     try {
+      // Always use DOM-based capture for the initial screenshot regardless of
+      // screenshotMethod config — native screen-capture requires user permission
+      // and should only be triggered by an explicit user action.
       const result = await captureScreenshot({
         filter: (node) => {
           if (node instanceof HTMLElement && node.tagName.toLowerCase() === 'bugdump-widget') {
@@ -231,6 +243,21 @@ export class Panel {
   hide(): void {
     this.visible = false;
     this.elements.root.classList.remove('bd-panel--visible');
+    this.clearAttachments();
+    this.restartSessionReplayCollector();
+  }
+
+  private clearAttachments(): void {
+    this.revokeAttachmentUrls();
+    this.attachments = [];
+    this.sessionReplayAttached = false;
+    this.renderAttachments();
+  }
+
+  private restartSessionReplayCollector(): void {
+    if (!this.sessionReplayCollector) return;
+    this.sessionReplayCollector.stop();
+    this.sessionReplayCollector.start();
   }
 
   isVisible(): boolean {
@@ -248,10 +275,8 @@ export class Panel {
     this.elements.textarea.style.height = '';
     this.elements.nameInput.value = '';
     this.elements.emailInput.value = '';
-    this.revokeAttachmentUrls();
-    this.attachments = [];
-    this.sessionReplayAttached = false;
-    this.renderAttachments();
+    this.clearAttachments();
+    this.restartSessionReplayCollector();
     this.showFormView();
     this.setSubmitting(false);
   }
@@ -882,8 +907,12 @@ export class Panel {
         return `${cameraIcon()} ${this.t.badgeScreenshot}`;
       case 'recording':
         return `${videoIcon()} ${this.t.badgeRecording}`;
-      case 'session_replay':
-        return `${replayIcon()} ${this.t.badgeReplay}`;
+      case 'session_replay': {
+        const label = att.durationSeconds != null && att.durationSeconds > 0
+          ? `${this.t.badgeReplay} (${formatDuration(att.durationSeconds)})`
+          : this.t.badgeReplay;
+        return `${replayIcon()} ${label}`;
+      }
       case 'voice_note':
         return `${micIcon()} ${this.t.badgeVoiceNote}`;
       case 'file':
@@ -963,6 +992,12 @@ function loadImage(src: string): Promise<HTMLImageElement> {
 
 function formatMB(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)}MB`;
+}
+
+function formatDuration(totalSeconds: number): string {
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes}:${String(seconds).padStart(2, '0')}`;
 }
 
 function getSupportedMimeType(): string {
