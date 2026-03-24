@@ -161,7 +161,14 @@ export function createStyles(): string {
       color: var(--bd-text);
     }
 
-    .bd-panel__close {
+    .bd-panel__header-actions {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .bd-panel__close,
+    .bd-panel__minimize {
       background: none;
       border: none;
       cursor: pointer;
@@ -174,12 +181,14 @@ export function createStyles(): string {
       transition: color 0.15s, background-color 0.15s;
     }
 
-    .bd-panel__close:hover {
+    .bd-panel__close:hover,
+    .bd-panel__minimize:hover {
       color: var(--bd-text);
       background: var(--bd-bg-hover);
     }
 
-    .bd-panel__close svg {
+    .bd-panel__close svg,
+    .bd-panel__minimize svg {
       width: 18px;
       height: 18px;
     }

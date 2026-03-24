@@ -1,5 +1,6 @@
 import {
   closeIcon,
+  minimizeIcon,
   paperclipIcon,
   cameraIcon,
   videoIcon,
@@ -38,6 +39,7 @@ export interface Attachment {
   thumbnailUrl?: string;
   textAnnotations?: TextAnnotationMeta[];
   durationSeconds?: number;
+  metadata?: Record<string, unknown>;
 }
 
 export interface PanelSubmitData {
@@ -106,6 +108,7 @@ export class Panel {
 
   private onSubmit: ((data: PanelSubmitData) => Promise<void>) | null = null;
   private onClose: (() => void) | null = null;
+  private onMinimize: (() => void) | null = null;
 
   private sessionReplayCollector: SessionReplayCollector | null = null;
   private sessionReplayAttached = false;
@@ -124,6 +127,10 @@ export class Panel {
 
   setOnClose(handler: () => void): void {
     this.onClose = handler;
+  }
+
+  setOnMinimize(handler: () => void): void {
+    this.onMinimize = handler;
   }
 
   setMaxMediaSize(size: number): void {
@@ -262,6 +269,11 @@ export class Panel {
     this.sessionReplayCollector.start();
   }
 
+  minimize(): void {
+    this.visible = false;
+    this.elements.root.classList.remove('bd-panel--visible');
+  }
+
   isVisible(): boolean {
     return this.visible;
   }
@@ -306,7 +318,10 @@ export class Panel {
     root.innerHTML = `
       <div class="bd-panel__header">
         <span class="bd-panel__title">${this.t.title}</span>
-        <button class="bd-panel__close" aria-label="Close">${closeIcon()}</button>
+        <div class="bd-panel__header-actions">
+          <button class="bd-panel__minimize" aria-label="Minimize">${minimizeIcon()}</button>
+          <button class="bd-panel__close" aria-label="Close">${closeIcon()}</button>
+        </div>
       </div>
       <div class="bd-panel__body" data-role="body">
         <textarea class="bd-textarea" placeholder="${this.t.descriptionPlaceholder}" rows="2"></textarea>
@@ -363,6 +378,9 @@ export class Panel {
   private bindEvents(): void {
     const closeBtn = this.elements.root.querySelector<HTMLButtonElement>('.bd-panel__close')!;
     closeBtn.addEventListener('click', () => this.handleClose());
+
+    const minimizeBtn = this.elements.root.querySelector<HTMLButtonElement>('.bd-panel__minimize')!;
+    minimizeBtn.addEventListener('click', () => this.onMinimize?.());
 
     this.elements.sendBtn.addEventListener('click', () => this.handleSubmit());
     this.elements.screenshotBtn.addEventListener('click', () => this.handleScreenshot());
@@ -683,19 +701,24 @@ export class Panel {
           }
 
           this.recordedChunks.push(e.data);
-          this.updateRecordingProgress();
         }
       };
 
       this.mediaRecorder.onstop = () => {
         const blob = new Blob(this.recordedChunks, { type: this.mediaRecorder?.mimeType || 'video/webm' });
         const thumbnailUrl = URL.createObjectURL(blob);
+        const recordingEndedAt = Date.now();
         this.addAttachment({
           id: generateAttachmentId(),
           type: 'recording',
           blob,
           name: `recording-${Date.now()}.webm`,
           thumbnailUrl,
+          metadata: {
+            recordingStartedAt: this.recordingStartTime,
+            recordingEndedAt,
+            durationMs: recordingEndedAt - this.recordingStartTime,
+          },
         });
         this.cleanupMediaStream();
         this.setRecordingState(false);
@@ -733,12 +756,19 @@ export class Panel {
     const recordingEvents = this.sessionReplayCollector.stopRecording();
 
     if (recordingEvents.length > 0) {
+      const firstTs = recordingEvents[0]!.timestamp;
+      const lastTs = recordingEvents[recordingEvents.length - 1]!.timestamp;
       const blob = new Blob([JSON.stringify(recordingEvents)], { type: 'application/json' });
       this.addAttachment({
         id: generateAttachmentId(),
         type: 'recording',
         blob,
         name: `recording-${Date.now()}.json`,
+        metadata: {
+          recordingStartedAt: firstTs,
+          recordingEndedAt: lastTs,
+          durationMs: lastTs - firstTs,
+        },
       });
     }
 
@@ -750,16 +780,6 @@ export class Panel {
       this.mediaStream.getTracks().forEach((t) => t.stop());
       this.mediaStream = null;
     }
-  }
-
-  private updateRecordingProgress(): void {
-    const elapsedS = Math.floor((Date.now() - this.recordingStartTime) / 1000);
-    const minutes = Math.floor(elapsedS / 60);
-    const seconds = elapsedS % 60;
-    const elapsed = `${minutes}:${String(seconds).padStart(2, '0')}`;
-    const usedMB = formatMB(this.recordedSize);
-    const limitMB = formatMB(this.maxMediaSize);
-    this.elements.recordBtn.innerHTML = `${stopIcon()} ${this.t.stop} (${elapsed} · ${usedMB} / ${limitMB})`;
   }
 
   private setRecordingState(isRecording: boolean): void {
@@ -990,10 +1010,6 @@ function loadImage(src: string): Promise<HTMLImageElement> {
     img.onerror = reject;
     img.src = src;
   });
-}
-
-function formatMB(bytes: number): string {
-  return `${(bytes / (1024 * 1024)).toFixed(1)}MB`;
 }
 
 function formatDuration(totalSeconds: number): string {

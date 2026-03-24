@@ -11,6 +11,7 @@ export class Widget {
   private triggerBtn: HTMLButtonElement;
   private panel: Panel;
   private open = false;
+  private minimized = false;
   private triggerIconHtml: string;
 
   private onSubmit: ((data: PanelSubmitData) => Promise<void>) | null = null;
@@ -37,6 +38,7 @@ export class Widget {
     this.shadowRoot.appendChild(this.panel.getElement());
 
     this.panel.setOnClose(() => this.close());
+    this.panel.setOnMinimize(() => this.minimizePanel());
 
     document.body.appendChild(this.host);
   }
@@ -85,6 +87,15 @@ export class Widget {
   async openPanel(): Promise<void> {
     if (this.open) return;
     this.open = true;
+
+    if (this.minimized) {
+      this.minimized = false;
+      this.triggerBtn.classList.add('bd-trigger--open');
+      this.triggerBtn.innerHTML = closeIcon();
+      this.panel.show();
+      return;
+    }
+
     this.triggerBtn.disabled = true;
     this.triggerBtn.innerHTML = '<div class="bd-spinner"></div>';
     await this.panel.attachAutoScreenshot();
@@ -97,9 +108,19 @@ export class Widget {
   close(): void {
     if (!this.open) return;
     this.open = false;
+    this.minimized = false;
     this.triggerBtn.classList.remove('bd-trigger--open');
     this.triggerBtn.innerHTML = this.triggerIconHtml;
     this.panel.hide();
+  }
+
+  private minimizePanel(): void {
+    if (!this.open) return;
+    this.open = false;
+    this.minimized = true;
+    this.triggerBtn.classList.remove('bd-trigger--open');
+    this.triggerBtn.innerHTML = this.triggerIconHtml;
+    this.panel.minimize();
   }
 
   isOpen(): boolean {

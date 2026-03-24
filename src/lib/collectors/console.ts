@@ -5,6 +5,7 @@ export interface ConsoleLogEntry {
 }
 
 const MAX_ENTRIES = 50;
+const MAX_ARG_SIZE = 8192;
 
 type ConsoleMethod = 'log' | 'warn' | 'error' | 'info' | 'debug';
 const METHODS: ConsoleMethod[] = ['log', 'warn', 'error', 'info', 'debug'];
@@ -68,7 +69,11 @@ export class ConsoleCollector {
       }
 
       try {
-        return JSON.parse(JSON.stringify(arg, this.circularReplacer()));
+        const serialized = JSON.stringify(arg, this.circularReplacer());
+        if (serialized.length > MAX_ARG_SIZE) {
+          return serialized.slice(0, MAX_ARG_SIZE) + '…[truncated]';
+        }
+        return JSON.parse(serialized);
       } catch {
         return String(arg);
       }

@@ -13,6 +13,7 @@ import type { ConsoleLogEntry } from './collectors/console';
 import type { NetworkRequestEntry } from './collectors/network';
 import type { PerformanceSnapshot } from './collectors/performance';
 import type { MetadataSnapshot } from './collectors/metadata';
+import { trimPayload } from './core/payload-trimmer';
 import type { eventWithTime } from '@rrweb/types';
 
 export interface TelemetrySnapshot {
@@ -215,10 +216,15 @@ export class Bugdump {
         this.widget?.setUploadProgress(currentIndex, totalUploads, percent);
       });
 
+      const attachmentMeta = {
+        ...(attachment.textAnnotations ? { textAnnotations: attachment.textAnnotations } : {}),
+        ...(attachment.metadata ?? {}),
+      };
+
       uploadedAttachments.push({
         fileId: uploadResponse.fileId,
         type: attachment.type,
-        metadata: attachment.textAnnotations ? { textAnnotations: attachment.textAnnotations } : undefined,
+        metadata: Object.keys(attachmentMeta).length > 0 ? attachmentMeta : undefined,
       });
     }
 
@@ -238,7 +244,7 @@ export class Bugdump {
       attachments: uploadedAttachments.length > 0 ? uploadedAttachments : undefined,
     };
 
-    await httpClient.submitReport(payload);
+    await httpClient.submitReport(trimPayload(payload));
     this.flushCollectors();
   }
 
