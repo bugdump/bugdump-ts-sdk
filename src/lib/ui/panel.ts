@@ -423,6 +423,10 @@ export class Panel {
 
     if (this.submitting || !this.onSubmit) return;
 
+    if (this.recording) {
+      await this.stopRecordingAsync();
+    }
+
     this.setSubmitting(true);
 
     try {
@@ -745,6 +749,32 @@ export class Panel {
       }
       this.cleanupMediaStream();
     }
+  }
+
+  private stopRecordingAsync(): Promise<void> {
+    if (this.features.screenRecordingMethod === 'dom') {
+      this.stopRecordingDom();
+      return Promise.resolve();
+    }
+
+    return new Promise<void>((resolve) => {
+      if (!this.mediaRecorder || this.mediaRecorder.state === 'inactive') {
+        this.cleanupMediaStream();
+        this.setRecordingState(false);
+        resolve();
+        return;
+      }
+
+      const originalOnStop = this.mediaRecorder.onstop;
+      this.mediaRecorder.onstop = (event) => {
+        if (originalOnStop) {
+          (originalOnStop as (ev: Event) => void).call(this.mediaRecorder, event);
+        }
+        resolve();
+      };
+
+      this.mediaRecorder.stop();
+    });
   }
 
   private stopRecordingDom(): void {
