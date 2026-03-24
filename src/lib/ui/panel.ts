@@ -240,10 +240,12 @@ export class Panel {
     }
   }
 
-  hide(): void {
+  hide({ preserveAttachments = false } = {}): void {
     this.visible = false;
     this.elements.root.classList.remove('bd-panel--visible');
-    this.clearAttachments();
+    if (!preserveAttachments) {
+      this.clearAttachments();
+    }
     this.restartSessionReplayCollector();
   }
 
@@ -429,7 +431,7 @@ export class Panel {
     this.elements.screenshotBtn.innerHTML = `<span class="bd-spinner"></span> ${this.t.capturing}`;
 
     try {
-      this.hide();
+      this.hide({ preserveAttachments: true });
       await delay(50);
 
       const result = this.features.screenshotMethod === 'screen-capture'
@@ -551,7 +553,7 @@ export class Panel {
     const imageUrl = URL.createObjectURL(attachment.blob);
     try {
       const image = await loadImage(imageUrl);
-      this.hide();
+      this.hide({ preserveAttachments: true });
       this.showAnnotationOverlay(image, attachment.blob, image.naturalWidth, image.naturalHeight, id);
     } catch {
       URL.revokeObjectURL(imageUrl);
