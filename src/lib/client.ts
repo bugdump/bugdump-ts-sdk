@@ -103,6 +103,16 @@ export class Bugdump {
     }
   }
 
+  reset(): void {
+    this.ensureInitialized();
+    this.state.user = null;
+    this.state.customContext = {};
+
+    if (this.widget) {
+      this.widget.setReporterInfo('', '');
+    }
+  }
+
   setContext(context: Record<string, unknown>): void {
     this.ensureInitialized();
     this.state.customContext = { ...this.state.customContext, ...context };

@@ -325,9 +325,9 @@ function onUserLogin(user: { id: string; name: string; email: string }) {
   });
 }
 
-// Clean up on logout
+// Clear user identity on logout (keeps the widget active)
 function onUserLogout() {
-  Bugdump.getInstance()?.destroy();
+  Bugdump.getInstance()?.reset();
 }
 ```
 
@@ -341,17 +341,19 @@ function App() {
   const user = useAuth(); // your auth hook
 
   useEffect(() => {
-    if (!user) return;
-
     const bugdump = Bugdump.init({
       apiKey: 'your-api-key',
     });
 
-    bugdump.identify({
-      id: user.id,
-      name: user.name,
-      email: user.email,
-    });
+    if (user) {
+      bugdump.identify({
+        id: user.id,
+        name: user.name,
+        email: user.email,
+      });
+    } else {
+      bugdump.reset();
+    }
 
     return () => {
       bugdump.destroy();
@@ -383,9 +385,8 @@ When using the `<script>` tag, **do not** use the `data-api-key` attribute (whic
   }
 
   // Call this on logout
-  function destroyBugdump() {
-    const instance = Bugdump.getInstance();
-    if (instance) instance.destroy();
+  function onLogout() {
+    Bugdump.getInstance()?.reset();
   }
 
   // Example: init after your app confirms the user is authenticated
@@ -430,6 +431,9 @@ bugdump.getUser();
 
 // Get the custom context
 bugdump.getContext();
+
+// Clear user identity and custom context (e.g., on logout)
+bugdump.reset();
 
 // Clean up and remove the widget
 bugdump.destroy();
