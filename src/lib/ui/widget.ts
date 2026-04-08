@@ -2,7 +2,7 @@ import { createStyles } from './styles';
 import { closeIcon, resolveIcon } from './icons';
 import { Panel } from './panel';
 import type { PanelSubmitData, PanelFeatures } from './panel';
-import type { BugdumpTheme, BugdumpTranslations } from '../types';
+import type { BugdumpTheme, BugdumpTranslations, ReportResponse } from '../types';
 import type { SessionReplayCollector } from '../collectors/session-replay';
 
 export class Widget {
@@ -14,7 +14,7 @@ export class Widget {
   private minimized = false;
   private triggerIconHtml: string;
 
-  private onSubmit: ((data: PanelSubmitData) => Promise<void>) | null = null;
+  private onSubmit: ((data: PanelSubmitData) => Promise<ReportResponse>) | null = null;
 
   constructor(options?: { hideButton?: boolean; icon?: string; features?: PanelFeatures; theme?: BugdumpTheme; translations?: BugdumpTranslations }) {
     this.host = document.createElement('bugdump-widget');
@@ -43,7 +43,7 @@ export class Widget {
     document.body.appendChild(this.host);
   }
 
-  setOnSubmit(handler: (data: PanelSubmitData) => Promise<void>): void {
+  setOnSubmit(handler: (data: PanelSubmitData) => Promise<ReportResponse>): void {
     this.onSubmit = handler;
     this.panel.setOnSubmit(handler);
   }
@@ -74,6 +74,14 @@ export class Widget {
 
   setPortalUrl(url: string | null | undefined): void {
     this.panel.setPortalUrl(url);
+  }
+
+  setDashboardUrl(url: string | null | undefined): void {
+    this.panel.setDashboardUrl(url);
+  }
+
+  setShowReportLink(show: boolean): void {
+    this.panel.setShowReportLink(show);
   }
 
   toggle(): void {
@@ -144,7 +152,7 @@ export class Widget {
   private createTriggerButton(title?: string): HTMLButtonElement {
     const btn = document.createElement('button');
     btn.className = 'bd-trigger';
-    btn.setAttribute('aria-label', title ?? 'Report a bug');
+    btn.setAttribute('aria-label', title ?? 'Send feedback');
     btn.innerHTML = this.triggerIconHtml;
     btn.addEventListener('click', () => this.toggle());
     return btn;

@@ -24,65 +24,26 @@ import { captureScreenshot, captureScreenshotNative } from '../capture/screensho
 import { AnnotationOverlay, renderOperationsToCanvas } from '../capture/annotation';
 import type { TextOperation } from '../capture/annotation';
 import { DEFAULT_TRANSLATIONS } from '../core/config';
-import type { BugdumpTranslations, CaptureMethod } from '../types';
+import type { BugdumpTranslations, ReportResponse } from '../types';
 import type { SessionReplayCollector } from '../collectors/session-replay';
+import { getAnnotationStyles } from './panel-annotation-styles';
+import { delay, loadImage, formatDuration, getSupportedMimeType } from './panel-utils';
+import {
+  MAX_ATTACHMENTS,
+  DEFAULT_MAX_MEDIA_SIZE,
+  RECORDING_TIMESLICE_MS,
+  MAX_RECORDING_DURATION_S,
+  generateAttachmentId,
+} from './panel-types';
+import type {
+  TextAnnotationMeta,
+  Attachment,
+  PanelSubmitData,
+  PanelFeatures,
+  PanelElements,
+} from './panel-types';
 
-export interface TextAnnotationMeta {
-  text: string;
-}
-
-export interface Attachment {
-  id: string;
-  type: 'screenshot' | 'recording' | 'voice_note' | 'session_replay' | 'file';
-  blob: Blob;
-  name: string;
-  thumbnailUrl?: string;
-  textAnnotations?: TextAnnotationMeta[];
-  durationSeconds?: number;
-  metadata?: Record<string, unknown>;
-}
-
-export interface PanelSubmitData {
-  description: string;
-  reporterName: string;
-  reporterEmail: string;
-  attachments: Attachment[];
-}
-
-export interface PanelFeatures {
-  screenshot: boolean;
-  screenshotMethod: CaptureMethod;
-  screenRecording: boolean;
-  screenRecordingMethod: CaptureMethod;
-  attachments: boolean;
-}
-
-interface PanelElements {
-  root: HTMLDivElement;
-  textarea: HTMLTextAreaElement;
-  nameInput: HTMLInputElement;
-  emailInput: HTMLInputElement;
-  sendBtn: HTMLButtonElement;
-  screenshotBtn: HTMLButtonElement;
-  recordBtn: HTMLButtonElement;
-  attachBtn: HTMLButtonElement;
-  fileInput: HTMLInputElement;
-  attachmentsList: HTMLDivElement;
-  reporterToggle: HTMLButtonElement;
-  reporterFields: HTMLDivElement;
-  body: HTMLDivElement;
-  successView: HTMLDivElement;
-}
-
-const MAX_ATTACHMENTS = 10;
-const DEFAULT_MAX_MEDIA_SIZE = 50 * 1024 * 1024; // 50MB fallback
-const RECORDING_TIMESLICE_MS = 1000;
-const MAX_RECORDING_DURATION_S = 180; // 3 minutes
-let attachmentIdCounter = 0;
-
-function generateAttachmentId(): string {
-  return `att_${Date.now()}_${++attachmentIdCounter}`;
-}
+export type { TextAnnotationMeta, Attachment, PanelSubmitData, PanelFeatures };
 
 
 export class Panel {
@@ -90,6 +51,7 @@ export class Panel {
   private attachments: Attachment[] = [];
   private visible = false;
   private submitting = false;
+  private showingSuccess = false;
   private recording = false;
   private mediaRecorder: MediaRecorder | null = null;
   private mediaStream: MediaStream | null = null;
@@ -102,13 +64,24 @@ export class Panel {
   private annotationOverlay: AnnotationOverlay | null = null;
   private annotationContainer: HTMLDivElement | null = null;
   private annotationStyleEl: HTMLStyleElement | null = null;
+  private audioContext: AudioContext | null = null;
+  private audioDestination: MediaStreamAudioDestinationNode | null = null;
+  private analyser: AnalyserNode | null = null;
+  private visualizerAnimFrame: number | null = null;
+  private micStream: MediaStream | null = null;
+  private micSource: MediaStreamAudioSourceNode | null = null;
+  private micEnabled = false;
+  private selectedMicDeviceId: string | null = null;
 
   private features: PanelFeatures;
   private t: Required<BugdumpTranslations>;
 
-  private onSubmit: ((data: PanelSubmitData) => Promise<void>) | null = null;
+  private onSubmit: ((data: PanelSubmitData) => Promise<ReportResponse>) | null = null;
   private onClose: (() => void) | null = null;
   private onMinimize: (() => void) | null = null;
+
+  private dashboardUrl: string | null = null;
+  private showReportLink = false;
 
   private sessionReplayCollector: SessionReplayCollector | null = null;
   private sessionReplayAttached = false;
@@ -121,7 +94,7 @@ export class Panel {
     this.bindEvents();
   }
 
-  setOnSubmit(handler: (data: PanelSubmitData) => Promise<void>): void {
+  setOnSubmit(handler: (data: PanelSubmitData) => Promise<ReportResponse>): void {
     this.onSubmit = handler;
   }
 
@@ -169,6 +142,14 @@ export class Panel {
     } else if (existing) {
       existing.remove();
     }
+  }
+
+  setDashboardUrl(url: string | null | undefined): void {
+    this.dashboardUrl = url ?? null;
+  }
+
+  setShowReportLink(show: boolean): void {
+    this.showReportLink = show;
   }
 
   updateFeatures(features: Partial<PanelFeatures>): void {
@@ -250,6 +231,10 @@ export class Panel {
   hide({ preserveAttachments = false } = {}): void {
     this.visible = false;
     this.elements.root.classList.remove('bd-panel--visible');
+    if (this.showingSuccess) {
+      this.reset();
+      return;
+    }
     if (!preserveAttachments) {
       this.clearAttachments();
     }
@@ -306,6 +291,7 @@ export class Panel {
 
   destroy(): void {
     this.stopRecording();
+    this.stopAudioVisualizer();
     this.destroyAnnotation();
     this.revokeAttachmentUrls();
     this.elements.root.remove();
@@ -340,6 +326,17 @@ export class Panel {
         </div>
         <input class="bd-file-input" type="file" multiple data-role="file-input" />
       </div>
+      <div class="bd-recording-bar" data-role="recording-bar" style="display:none">
+        <div class="bd-recording-bar__indicator"></div>
+        <span class="bd-recording-bar__timer" data-role="recording-bar-timer">0:00 / 3:00</span>
+        <canvas class="bd-recording-bar__canvas" data-role="recording-bar-canvas" width="80" height="28"></canvas>
+        <div class="bd-recording-bar__mic-group">
+          <button class="bd-recording-bar__mic" data-role="recording-bar-mic" aria-label="Toggle microphone">${micIcon()}</button>
+          <button class="bd-recording-bar__mic-select" data-role="recording-bar-mic-select" aria-label="Select microphone">${chevronIcon()}</button>
+        </div>
+        <button class="bd-recording-bar__stop" data-role="recording-bar-stop">${stopIcon()} ${this.t.stop}</button>
+        <button class="bd-recording-bar__discard" data-role="recording-bar-discard">${closeIcon()} ${this.t.cancel}</button>
+      </div>
       <div class="bd-success" data-role="success" style="display:none">
         ${checkCircleIcon()}
         <div class="bd-success__title">${this.t.successTitle}</div>
@@ -370,6 +367,13 @@ export class Panel {
       reporterFields: q<HTMLDivElement>('[data-role="reporter-fields"]'),
       body: q<HTMLDivElement>('[data-role="body"]'),
       successView: q<HTMLDivElement>('[data-role="success"]'),
+      recordingBar: q<HTMLDivElement>('[data-role="recording-bar"]'),
+      recordingBarTimer: q<HTMLSpanElement>('[data-role="recording-bar-timer"]'),
+      recordingBarCanvas: q<HTMLCanvasElement>('[data-role="recording-bar-canvas"]'),
+      recordingBarStop: q<HTMLButtonElement>('[data-role="recording-bar-stop"]'),
+      recordingBarDiscard: q<HTMLButtonElement>('[data-role="recording-bar-discard"]'),
+      recordingBarMic: q<HTMLButtonElement>('[data-role="recording-bar-mic"]'),
+      recordingBarMicSelect: q<HTMLButtonElement>('[data-role="recording-bar-mic-select"]'),
     };
 
     return elements;
@@ -388,6 +392,11 @@ export class Panel {
     this.elements.attachBtn.addEventListener('click', () => this.elements.fileInput.click());
     this.elements.fileInput.addEventListener('change', () => this.handleFileSelect());
     this.elements.reporterToggle.addEventListener('click', () => this.toggleReporter());
+
+    this.elements.recordingBarStop.addEventListener('click', () => this.stopRecording());
+    this.elements.recordingBarDiscard.addEventListener('click', () => this.discardRecording());
+    this.elements.recordingBarMic.addEventListener('click', () => this.toggleMic());
+    this.elements.recordingBarMicSelect.addEventListener('click', () => this.showMicDeviceSelector());
 
     this.elements.textarea.addEventListener('input', () => {
       this.autoResizeTextarea();
@@ -430,17 +439,13 @@ export class Panel {
     this.setSubmitting(true);
 
     try {
-      await this.onSubmit({
+      const result = await this.onSubmit({
         description,
         reporterName: this.elements.nameInput.value.trim(),
         reporterEmail: this.elements.emailInput.value.trim(),
         attachments: [...this.attachments],
       });
-      this.showSuccessView();
-      setTimeout(() => {
-        this.reset();
-        this.handleClose();
-      }, 2000);
+      this.showSuccessView(result.id);
     } catch {
       this.setSubmitting(false);
       this.showError(this.t.errorMessage);
@@ -510,6 +515,7 @@ export class Panel {
         <button class="bd-annotation-tool-btn" data-tool="text" title="${this.t.textTool}">${textToolIcon()}</button>
         <button class="bd-annotation-tool-btn" data-tool="blur" title="${this.t.blurTool}">${blurToolIcon()}</button>
       </div>
+      <div class="bd-annotation-toolbar__divider"></div>
       <div class="bd-annotation-toolbar__colors">
         <button class="bd-annotation-color-btn active" data-color="#ff0000" style="background:#ff0000" title="Red"></button>
         <button class="bd-annotation-color-btn" data-color="#ffcc00" style="background:#ffcc00" title="Yellow"></button>
@@ -517,7 +523,7 @@ export class Panel {
         <button class="bd-annotation-color-btn" data-color="#0099ff" style="background:#0099ff" title="Blue"></button>
         <button class="bd-annotation-color-btn" data-color="#ffffff" style="background:#ffffff" title="White"></button>
       </div>
-      <div class="bd-annotation-toolbar__spacer"></div>
+      <div class="bd-annotation-toolbar__divider"></div>
       <button class="bd-annotation-action-btn" data-annotation-action="undo" title="${this.t.undo}">${undoIcon()}</button>
       <div class="bd-annotation-toolbar__divider"></div>
       <button class="bd-annotation-toolbar__cancel" data-annotation-action="cancel">${closeIcon()} ${this.t.cancel}</button>
@@ -685,21 +691,44 @@ export class Panel {
     try {
       this.mediaStream = await navigator.mediaDevices.getDisplayMedia({
         video: true,
-        audio: false,
+        audio: true,
         preferCurrentTab: true,
       } as DisplayMediaStreamOptions);
 
+      const videoTracks = this.mediaStream.getVideoTracks();
+      const audioTracks = this.mediaStream.getAudioTracks();
+      if (audioTracks.length === 0) {
+        console.warn('[Bugdump] No display audio captured — user may not have shared tab audio');
+      }
+
+      // Set up a persistent AudioContext + destination for mixing audio sources.
+      // Mic can be connected/disconnected at any time without rebuilding the recorder.
+      this.audioContext = new AudioContext();
+      this.audioDestination = this.audioContext.createMediaStreamDestination();
+
+      // Connect display audio tracks (if user shared tab audio)
+      for (const track of audioTracks) {
+        const source = this.audioContext.createMediaStreamSource(new MediaStream([track]));
+        source.connect(this.audioDestination);
+      }
+
+      // Build the stream for MediaRecorder: video + mixed audio destination
+      const videoTrack = videoTracks[0]!;
+      const mixedAudioTrack = this.audioDestination.stream.getAudioTracks()[0]!;
+      const recordStream = new MediaStream([videoTrack, mixedAudioTrack]);
+
+      const mimeType = getSupportedMimeType();
+
       this.recordedChunks = [];
       this.recordedSize = 0;
-      this.mediaRecorder = new MediaRecorder(this.mediaStream, {
-        mimeType: getSupportedMimeType(),
-      });
+      this.mediaRecorder = new MediaRecorder(recordStream, { mimeType });
 
       this.mediaRecorder.ondataavailable = (e) => {
         if (e.data.size > 0) {
           this.recordedSize += e.data.size;
 
           if (this.recordedSize > this.maxMediaSize) {
+            console.warn(`[Bugdump] Recording stopped: max size exceeded (${Math.round(this.maxMediaSize / 1024 / 1024)}MB)`);
             this.stopRecording();
             return;
           }
@@ -734,10 +763,154 @@ export class Panel {
 
       this.mediaRecorder.start(RECORDING_TIMESLICE_MS);
       this.setRecordingState(true);
-    } catch {
+
+      // Visualizer taps the mixed destination so it shows both display + mic audio
+      this.startAudioVisualizer();
+    } catch (err) {
+      console.warn('[Bugdump] Screen capture failed:', err);
       this.cleanupMediaStream();
       this.setRecordingState(false);
     }
+  }
+
+  private async toggleMic(): Promise<void> {
+    if (this.micEnabled) {
+      this.disconnectMic();
+    } else {
+      // Connect using last selected device, or default
+      const audioConstraints: MediaTrackConstraints = this.selectedMicDeviceId
+        ? { deviceId: { exact: this.selectedMicDeviceId } }
+        : {};
+      try {
+        this.micStream = await navigator.mediaDevices.getUserMedia({ audio: audioConstraints });
+        const track = this.micStream.getAudioTracks()[0];
+        if (track) {
+          this.selectedMicDeviceId = track.getSettings().deviceId ?? null;
+        }
+        this.micEnabled = true;
+        this.elements.recordingBarMic.classList.add('bd-recording-bar__mic--active');
+        if (this.audioContext && this.audioDestination) {
+          this.micSource = this.audioContext.createMediaStreamSource(this.micStream);
+          this.micSource.connect(this.audioDestination);
+        }
+      } catch (err) {
+        console.warn('[Bugdump] Microphone access denied:', err);
+        this.flashMicError();
+      }
+    }
+  }
+
+  private async showMicDeviceSelector(): Promise<void> {
+    // Close existing dropdown if open
+    this.closeMicDeviceDropdown();
+
+    let devices: MediaDeviceInfo[];
+    try {
+      // Request temporary mic access to get device labels
+      const tempStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      devices = (await navigator.mediaDevices.enumerateDevices())
+        .filter((d) => d.kind === 'audioinput');
+      tempStream.getTracks().forEach((t) => t.stop());
+    } catch (err) {
+      console.warn('[Bugdump] Microphone access denied:', err);
+      this.flashMicError();
+      return;
+    }
+
+    if (devices.length === 0) return;
+
+    // Show dropdown — append to shadow root to avoid overflow clipping
+    const dropdown = document.createElement('div');
+    dropdown.className = 'bd-mic-dropdown';
+    dropdown.dataset.role = 'mic-dropdown';
+
+    for (const device of devices) {
+      const item = document.createElement('button');
+      item.className = 'bd-mic-dropdown__item';
+      if (device.deviceId === this.selectedMicDeviceId) {
+        item.classList.add('bd-mic-dropdown__item--active');
+      }
+      item.textContent = device.label || `Microphone ${devices.indexOf(device) + 1}`;
+      item.addEventListener('click', () => {
+        this.closeMicDeviceDropdown();
+        this.connectMic(device.deviceId);
+      });
+      dropdown.appendChild(item);
+    }
+
+    // Position above the mic group
+    const btnRect = this.elements.recordingBarMicSelect.getBoundingClientRect();
+    const hostRect = this.shadowRoot.host.getBoundingClientRect();
+    dropdown.style.position = 'fixed';
+    dropdown.style.bottom = `${window.innerHeight - btnRect.top + 6}px`;
+    dropdown.style.left = `${btnRect.left + btnRect.width / 2 - hostRect.left}px`;
+    dropdown.style.transform = 'translateX(-50%)';
+
+    this.shadowRoot.appendChild(dropdown);
+
+    // Close on outside click (listen on both document and shadow root)
+    const closeHandler = (e: Event) => {
+      const target = e.target as Node;
+      if (!dropdown.contains(target) && !this.elements.recordingBarMicSelect.contains(target)) {
+        this.closeMicDeviceDropdown();
+        document.removeEventListener('click', closeHandler);
+        this.shadowRoot.removeEventListener('click', closeHandler);
+      }
+    };
+    setTimeout(() => {
+      document.addEventListener('click', closeHandler);
+      this.shadowRoot.addEventListener('click', closeHandler);
+    }, 0);
+  }
+
+  private closeMicDeviceDropdown(): void {
+    const existing = this.shadowRoot.querySelector('[data-role="mic-dropdown"]');
+    if (existing) existing.remove();
+  }
+
+  private async connectMic(deviceId: string): Promise<void> {
+    // Disconnect previous mic if any
+    this.disconnectMic();
+
+    try {
+      this.micStream = await navigator.mediaDevices.getUserMedia({
+        audio: { deviceId: { exact: deviceId } },
+      });
+    } catch (err) {
+      console.warn('[Bugdump] Microphone access denied:', err);
+      this.flashMicError();
+      return;
+    }
+
+    this.selectedMicDeviceId = deviceId;
+    this.micEnabled = true;
+    this.elements.recordingBarMic.classList.add('bd-recording-bar__mic--active');
+
+    // Connect mic to the existing audio destination (no recorder rebuild needed)
+    if (this.audioContext && this.audioDestination) {
+      this.micSource = this.audioContext.createMediaStreamSource(this.micStream);
+      this.micSource.connect(this.audioDestination);
+    }
+
+  }
+
+  private disconnectMic(): void {
+    if (this.micSource) {
+      this.micSource.disconnect();
+      this.micSource = null;
+    }
+    if (this.micStream) {
+      this.micStream.getTracks().forEach((t) => t.stop());
+      this.micStream = null;
+    }
+    this.micEnabled = false;
+    this.elements.recordingBarMic.classList.remove('bd-recording-bar__mic--active');
+  }
+
+  private flashMicError(): void {
+    const btn = this.elements.recordingBarMic;
+    btn.classList.add('bd-recording-bar__mic--error');
+    setTimeout(() => btn.classList.remove('bd-recording-bar__mic--error'), 1500);
   }
 
   private stopRecording(): void {
@@ -806,30 +979,73 @@ export class Panel {
   }
 
   private cleanupMediaStream(): void {
+    this.disconnectMic();
     if (this.mediaStream) {
       this.mediaStream.getTracks().forEach((t) => t.stop());
       this.mediaStream = null;
     }
+    this.audioDestination = null;
   }
 
   private setRecordingState(isRecording: boolean): void {
     this.recording = isRecording;
     if (isRecording) {
       this.recordingStartTime = Date.now();
-      this.updateRecordingTimer();
-      this.recordingTimerInterval = setInterval(() => this.updateRecordingTimer(), 1000);
-      this.elements.recordBtn.style.color = '#ef4444';
+      this.showRecordingBar();
+      this.updateRecordingBarTimer();
+      this.recordingTimerInterval = setInterval(() => this.updateRecordingBarTimer(), 1000);
     } else {
       if (this.recordingTimerInterval) {
         clearInterval(this.recordingTimerInterval);
         this.recordingTimerInterval = null;
       }
+      this.stopAudioVisualizer();
+      this.hideRecordingBar();
       this.elements.recordBtn.innerHTML = `${videoIcon()} ${this.t.recordButton}`;
       this.elements.recordBtn.style.color = '';
     }
   }
 
-  private updateRecordingTimer(): void {
+  private showRecordingBar(): void {
+    const header = this.elements.root.querySelector<HTMLElement>('.bd-panel__header');
+    const footer = this.elements.root.querySelector<HTMLElement>('.bd-panel__footer');
+    if (header) header.style.display = 'none';
+    this.elements.body.style.display = 'none';
+    if (footer) footer.style.display = 'none';
+    this.elements.successView.style.display = 'none';
+    this.elements.recordingBar.style.display = 'flex';
+    this.elements.root.classList.add('bd-panel--recording');
+  }
+
+  private hideRecordingBar(): void {
+    this.elements.recordingBar.style.display = 'none';
+    this.elements.root.classList.remove('bd-panel--recording');
+    const header = this.elements.root.querySelector<HTMLElement>('.bd-panel__header');
+    const footer = this.elements.root.querySelector<HTMLElement>('.bd-panel__footer');
+    if (header) header.style.display = '';
+    this.elements.body.style.display = '';
+    if (footer) footer.style.display = '';
+  }
+
+  private discardRecording(): void {
+    if (this.features.screenRecordingMethod === 'dom') {
+      if (this.sessionReplayCollector) {
+        this.sessionReplayCollector.stopRecording();
+      }
+    } else {
+      if (this.mediaRecorder && this.mediaRecorder.state !== 'inactive') {
+        // Clear onstop so it doesn't add the attachment
+        this.mediaRecorder.onstop = null;
+        this.mediaRecorder.stop();
+      }
+      this.cleanupMediaStream();
+    }
+    this.recordedChunks = [];
+    this.recordedSize = 0;
+    this.setRecordingState(false);
+  }
+
+  private updateRecordingBarTimer(): void {
     const elapsedS = Math.floor((Date.now() - this.recordingStartTime) / 1000);
 
     if (elapsedS >= MAX_RECORDING_DURATION_S) {
@@ -843,7 +1059,75 @@ export class Panel {
     const maxMin = Math.floor(MAX_RECORDING_DURATION_S / 60);
     const maxSec = MAX_RECORDING_DURATION_S % 60;
     const limit = `${maxMin}:${String(maxSec).padStart(2, '0')}`;
-    this.elements.recordBtn.innerHTML = `${stopIcon()} ${this.t.stop} (${elapsed} / ${limit})`;
+    this.elements.recordingBarTimer.textContent = `${elapsed} / ${limit}`;
+  }
+
+  private startAudioVisualizer(): void {
+    if (!this.audioContext || !this.audioDestination) return;
+
+    try {
+      this.analyser = this.audioContext.createAnalyser();
+      this.analyser.fftSize = 64;
+      // Tap the mixed destination stream to visualize all audio sources
+      const source = this.audioContext.createMediaStreamSource(this.audioDestination.stream);
+      source.connect(this.analyser);
+      this.drawVisualizer();
+    } catch {
+      // AudioContext not supported — canvas stays blank
+    }
+  }
+
+  private drawVisualizer(): void {
+    if (!this.analyser) return;
+
+    const canvas = this.elements.recordingBarCanvas;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const bufferLength = this.analyser.frequencyBinCount;
+    const dataArray = new Uint8Array(bufferLength);
+    const barCount = 12;
+    const barWidth = 3;
+    const gap = (canvas.width - barCount * barWidth) / (barCount + 1);
+    const maxBarHeight = canvas.height - 4;
+
+    const draw = () => {
+      this.visualizerAnimFrame = requestAnimationFrame(draw);
+      this.analyser!.getByteFrequencyData(dataArray);
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      for (let i = 0; i < barCount; i++) {
+        const dataIndex = Math.floor((i / barCount) * bufferLength);
+        const value = dataArray[dataIndex]! / 255;
+        const barHeight = Math.max(2, value * maxBarHeight);
+        const x = gap + i * (barWidth + gap);
+        const y = (canvas.height - barHeight) / 2;
+
+        ctx.fillStyle = `rgba(239, 68, 68, ${0.4 + value * 0.6})`;
+        ctx.beginPath();
+        ctx.roundRect(x, y, barWidth, barHeight, 1.5);
+        ctx.fill();
+      }
+    };
+
+    draw();
+  }
+
+  private stopAudioVisualizer(): void {
+    if (this.visualizerAnimFrame != null) {
+      cancelAnimationFrame(this.visualizerAnimFrame);
+      this.visualizerAnimFrame = null;
+    }
+    if (this.audioContext) {
+      this.audioContext.close().catch(() => {});
+      this.audioContext = null;
+      this.analyser = null;
+    }
+    const ctx = this.elements.recordingBarCanvas.getContext('2d');
+    if (ctx) {
+      ctx.clearRect(0, 0, this.elements.recordingBarCanvas.width, this.elements.recordingBarCanvas.height);
+    }
   }
 
   private handleFileSelect(): void {
@@ -994,14 +1278,48 @@ export class Panel {
     }
   }
 
-  private showSuccessView(): void {
+  private showSuccessView(reportId?: string): void {
+    this.showingSuccess = true;
     this.elements.body.style.display = 'none';
     this.elements.successView.style.display = 'flex';
     const footer = this.elements.root.querySelector<HTMLDivElement>('.bd-panel__footer')!;
     footer.style.display = 'none';
+
+    const existingLink = this.elements.successView.querySelector('.bd-success__link-row');
+    if (existingLink) existingLink.remove();
+
+    if (!this.showReportLink || !this.dashboardUrl || !reportId) return;
+
+    const reportUrl = `${this.dashboardUrl}/${reportId}`;
+    const row = document.createElement('div');
+    row.className = 'bd-success__link-row';
+
+    const link = document.createElement('a');
+    link.href = reportUrl;
+    link.target = '_blank';
+    link.rel = 'noopener';
+    link.className = 'bd-success__link';
+    link.textContent = reportUrl;
+
+    const copyBtn = document.createElement('button');
+    copyBtn.className = 'bd-success__copy-btn';
+    copyBtn.textContent = this.t.copyLink;
+    copyBtn.addEventListener('click', () => {
+      navigator.clipboard.writeText(reportUrl).then(() => {
+        copyBtn.textContent = this.t.copied;
+        setTimeout(() => {
+          copyBtn.textContent = this.t.copyLink;
+        }, 2000);
+      });
+    });
+
+    row.appendChild(link);
+    row.appendChild(copyBtn);
+    this.elements.successView.appendChild(row);
   }
 
   private showFormView(): void {
+    this.showingSuccess = false;
     this.elements.body.style.display = 'flex';
     this.elements.successView.style.display = 'none';
     const footer = this.elements.root.querySelector<HTMLDivElement>('.bd-panel__footer')!;
@@ -1029,219 +1347,3 @@ export class Panel {
   }
 }
 
-function delay(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-function loadImage(src: string): Promise<HTMLImageElement> {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.onload = () => resolve(img);
-    img.onerror = reject;
-    img.src = src;
-  });
-}
-
-function formatDuration(totalSeconds: number): string {
-  const minutes = Math.floor(totalSeconds / 60);
-  const seconds = totalSeconds % 60;
-  return `${minutes}:${String(seconds).padStart(2, '0')}`;
-}
-
-function getSupportedMimeType(): string {
-  const types = ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm', 'video/mp4'];
-  for (const type of types) {
-    if (MediaRecorder.isTypeSupported(type)) {
-      return type;
-    }
-  }
-  return 'video/webm';
-}
-
-function getAnnotationStyles(): string {
-  return `
-    .bd-annotation-overlay {
-      width: 100%;
-      height: 100%;
-      background: rgba(0, 0, 0, 0.6);
-      display: flex;
-      flex-direction: column;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-    }
-
-    .bd-annotation-toolbar {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 8px 16px;
-      background: #1a1a2e;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-    }
-
-    .bd-annotation-toolbar__group {
-      display: flex;
-      align-items: center;
-      gap: 2px;
-      background: rgba(255, 255, 255, 0.06);
-      border-radius: 8px;
-      padding: 3px;
-    }
-
-    .bd-annotation-tool-btn {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      width: 36px;
-      height: 36px;
-      padding: 0;
-      background: transparent;
-      color: rgba(255, 255, 255, 0.7);
-      border: 2px solid transparent;
-      border-radius: 6px;
-      cursor: pointer;
-      transition: all 0.15s ease;
-    }
-
-    .bd-annotation-tool-btn svg {
-      width: 18px;
-      height: 18px;
-    }
-
-    .bd-annotation-tool-btn:hover {
-      color: #ffffff;
-      background: rgba(255, 255, 255, 0.1);
-    }
-
-    .bd-annotation-tool-btn.active {
-      color: #ffffff;
-      background: rgba(99, 102, 241, 0.5);
-      border-color: rgba(99, 102, 241, 0.8);
-    }
-
-    .bd-annotation-toolbar__colors {
-      display: flex;
-      align-items: center;
-      gap: 4px;
-      padding: 0 8px;
-    }
-
-    .bd-annotation-color-btn {
-      width: 20px;
-      height: 20px;
-      border-radius: 50%;
-      border: 2px solid rgba(255, 255, 255, 0.2);
-      cursor: pointer;
-      padding: 0;
-      transition: transform 0.15s ease, border-color 0.15s ease;
-    }
-
-    .bd-annotation-color-btn:hover {
-      transform: scale(1.2);
-      border-color: rgba(255, 255, 255, 0.5);
-    }
-
-    .bd-annotation-color-btn.active {
-      border-color: #ffffff;
-      transform: scale(1.15);
-      box-shadow: 0 0 6px rgba(255, 255, 255, 0.3);
-    }
-
-    .bd-annotation-toolbar__spacer {
-      flex: 1;
-    }
-
-    .bd-annotation-action-btn {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      width: 36px;
-      height: 36px;
-      padding: 0;
-      background: transparent;
-      color: rgba(255, 255, 255, 0.7);
-      border: 1px solid transparent;
-      border-radius: 6px;
-      cursor: pointer;
-      transition: all 0.15s ease;
-    }
-
-    .bd-annotation-action-btn svg {
-      width: 18px;
-      height: 18px;
-    }
-
-    .bd-annotation-action-btn:hover {
-      color: #ffffff;
-      background: rgba(255, 255, 255, 0.1);
-    }
-
-    .bd-annotation-toolbar__divider {
-      width: 1px;
-      height: 24px;
-      background: rgba(255, 255, 255, 0.15);
-      margin: 0 4px;
-    }
-
-    .bd-annotation-toolbar__cancel {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 7px 14px;
-      background: transparent;
-      color: rgba(255, 255, 255, 0.6);
-      border: 1px solid rgba(255, 255, 255, 0.15);
-      border-radius: 6px;
-      font-size: 13px;
-      font-weight: 500;
-      font-family: inherit;
-      cursor: pointer;
-      transition: all 0.15s ease;
-    }
-
-    .bd-annotation-toolbar__cancel svg {
-      width: 14px;
-      height: 14px;
-    }
-
-    .bd-annotation-toolbar__cancel:hover {
-      color: #ffffff;
-      background: rgba(255, 255, 255, 0.08);
-      border-color: rgba(255, 255, 255, 0.3);
-    }
-
-    .bd-annotation-toolbar__confirm {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 7px 16px;
-      background: #22c55e;
-      color: #ffffff;
-      border: none;
-      border-radius: 6px;
-      font-size: 13px;
-      font-weight: 600;
-      font-family: inherit;
-      cursor: pointer;
-      transition: background-color 0.15s ease;
-    }
-
-    .bd-annotation-toolbar__confirm svg {
-      width: 14px;
-      height: 14px;
-    }
-
-    .bd-annotation-toolbar__confirm:hover {
-      background: #16a34a;
-    }
-
-    .bd-annotation-canvas-wrap {
-      flex: 1;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      overflow: hidden;
-      position: relative;
-    }
-  `;
-}

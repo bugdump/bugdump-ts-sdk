@@ -12,19 +12,19 @@ const DEFAULT_FEATURES: Required<BugdumpFeatures> = {
 };
 
 export const DEFAULT_TRANSLATIONS: Required<BugdumpTranslations> = {
-  title: 'Report a bug',
-  descriptionPlaceholder: 'Describe the bug you found...',
+  title: 'Send feedback',
+  descriptionPlaceholder: 'What\'s on your mind?',
   attachButton: 'Attach',
   screenshotButton: 'Screenshot',
   recordButton: 'Record',
-  sendButton: 'Send report',
+  sendButton: 'Send',
   reporterToggle: 'Reporter info',
   namePlaceholder: 'Your name',
   emailPlaceholder: 'Your email',
   capturing: 'Capturing...',
   stop: 'Stop',
   sending: 'Sending...',
-  successTitle: 'Bug report sent!',
+  successTitle: 'Feedback sent!',
   successSubtitle: 'Thank you for your feedback.',
   errorMessage: 'Something went wrong. Please try again.',
   arrowTool: 'Arrow',
@@ -39,6 +39,8 @@ export const DEFAULT_TRANSLATIONS: Required<BugdumpTranslations> = {
   badgeRecording: 'Recording',
   badgeReplay: 'Replay',
   badgeVoiceNote: 'Voice note',
+  copyLink: 'Copy link',
+  copied: 'Copied!',
 };
 
 export function resolveConfig(config: BugdumpConfig): Required<BugdumpConfig> {
@@ -47,6 +49,7 @@ export function resolveConfig(config: BugdumpConfig): Required<BugdumpConfig> {
     endpoint: (config.endpoint || DEFAULT_ENDPOINT).replace(/\/+$/, ''),
     captureNetworkBodies: config.captureNetworkBodies ?? false,
     hideButton: config.hideButton ?? false,
+    showReportLink: config.showReportLink ?? false,
     theme: config.theme ?? 'auto',
     icon: config.icon ?? '',
     features: { ...DEFAULT_FEATURES, ...config.features },

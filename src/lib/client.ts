@@ -1,4 +1,4 @@
-import type { BugdumpConfig, BugdumpUserContext, ReportPayload } from './types';
+import type { BugdumpConfig, BugdumpUserContext, ReportPayload, ReportResponse } from './types';
 import { resolveConfig } from './core/config';
 import { createInitialState, type SdkState } from './core/state';
 import { HttpClient } from './http-client';
@@ -78,6 +78,7 @@ export class Bugdump {
         });
         instance.widget?.setRemoveBranding(widgetConfig.features.removeBranding);
         instance.widget?.setPortalUrl(widgetConfig.portalUrl);
+        instance.widget?.setDashboardUrl(widgetConfig.dashboardUrl);
         if (!widgetConfig.features.sessionReplay) {
           instance.sessionReplayCollector.stop();
         }
@@ -200,9 +201,10 @@ export class Bugdump {
     });
     this.widget.setOnSubmit((data) => this.handleSubmit(data));
     this.widget.setSessionReplayCollector(this.sessionReplayCollector);
+    this.widget.setShowReportLink(this.state.config?.showReportLink ?? false);
   }
 
-  private async handleSubmit(data: PanelSubmitData): Promise<void> {
+  private async handleSubmit(data: PanelSubmitData): Promise<ReportResponse> {
     const httpClient = this.httpClient!;
     const telemetry = this.collectTelemetry();
     const metadata = telemetry.metadata;
@@ -254,8 +256,9 @@ export class Bugdump {
       attachments: uploadedAttachments.length > 0 ? uploadedAttachments : undefined,
     };
 
-    await httpClient.submitReport(trimPayload(payload));
+    const result = await httpClient.submitReport(trimPayload(payload));
     this.flushCollectors();
+    return result;
   }
 
   private ensureInitialized(): void {

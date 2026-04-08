@@ -10,6 +10,7 @@ Official TypeScript SDK for [Bugdump](https://bugdump.com) - embed a bug reporti
 - **TypeScript-first** - Full type definitions out of the box
 - **Shadow DOM isolated** - Widget styles never leak into your app
 - **Auto-init** - Single script tag with `data-api-key`, no JS required
+- **Report link** - Optionally show a direct link to the created report after submission with a copy button
 - **Public portal link** - Automatically shows a "View reports" link in the widget footer when the public portal is enabled for your project
 
 ## Installation
@@ -60,8 +61,9 @@ const bugdump = Bugdump.init({
   apiKey: 'your-api-key',
   endpoint: 'https://api.bugdump.com',  // Custom API endpoint
   theme: 'auto',                         // Widget color theme
-  icon: 'bug',                            // Trigger button icon
+  icon: 'chat',                           // Trigger button icon
   hideButton: false,                      // Hide the floating button
+  showReportLink: false,                  // Show report link after submission
   captureNetworkBodies: false,            // Capture request/response bodies
   features: {
     screenshot: true,                     // Screenshot capture
@@ -80,7 +82,8 @@ const bugdump = Bugdump.init({
 | `endpoint` | `string` | `https://api.bugdump.com` | Custom API endpoint |
 | `theme` | `'light' \| 'dark' \| 'auto'` | `'auto'` | Widget color theme. `auto` follows the user's OS preference |
 | `hideButton` | `boolean` | `false` | Hide the floating button and trigger the widget programmatically |
-| `icon` | `string` | `'bug'` | Custom trigger button icon (see [Custom Icon](#custom-icon) below) |
+| `showReportLink` | `boolean` | `false` | Show a link to the created report on the success screen with a copy button |
+| `icon` | `string` | `'chat'` | Custom trigger button icon (see [Custom Icon](#custom-icon) below) |
 | `captureNetworkBodies` | `boolean` | `false` | Include request/response bodies in network logs |
 | `features` | `object` | all `true` | Enable/disable widget features (see below) |
 | `translations` | `object` | English defaults | Override widget UI strings (see below) |
@@ -115,19 +118,19 @@ const bugdump = Bugdump.init({
 
 | Key | Default | Description |
 |---|---|---|
-| `title` | `Report a bug` | Panel header title and trigger button aria-label |
-| `descriptionPlaceholder` | `Describe the bug you found...` | Textarea placeholder |
+| `title` | `Send feedback` | Panel header title and trigger button aria-label |
+| `descriptionPlaceholder` | `What's on your mind?` | Textarea placeholder |
 | `attachButton` | `Attach` | File attach button label |
 | `screenshotButton` | `Screenshot` | Screenshot button label |
 | `recordButton` | `Record` | Screen recording button label |
-| `sendButton` | `Send report` | Submit button label |
+| `sendButton` | `Send` | Submit button label |
 | `reporterToggle` | `Reporter info` | Reporter section toggle label |
 | `namePlaceholder` | `Your name` | Name input placeholder |
 | `emailPlaceholder` | `Your email` | Email input placeholder |
 | `capturing` | `Capturing...` | Screenshot loading state |
 | `stop` | `Stop` | Recording stop button label |
 | `sending` | `Sending...` | Submit loading state |
-| `successTitle` | `Bug report sent!` | Success message title |
+| `successTitle` | `Feedback sent!` | Success message title |
 | `successSubtitle` | `Thank you for your feedback.` | Success message subtitle |
 | `errorMessage` | `Something went wrong. Please try again.` | Error message |
 | `arrowTool` | `Arrow` | Annotation arrow tool tooltip |
@@ -138,6 +141,8 @@ const bugdump = Bugdump.init({
 | `undo` | `Undo` | Annotation undo button tooltip |
 | `cancel` | `Cancel` | Annotation cancel button label |
 | `done` | `Done` | Annotation confirm button label |
+| `copyLink` | `Copy link` | Copy report link button label (shown when `showReportLink` is enabled) |
+| `copied` | `Copied!` | Feedback text after copying the report link |
 
 ### Script Tag
 
@@ -149,8 +154,9 @@ Use `data-*` attributes to configure the widget. All attributes are optional exc
   data-api-key="your-api-key"
   data-api-url="https://api.bugdump.com"
   data-theme="auto"
-  data-icon="bug"
+  data-icon="chat"
   data-hide-button="false"
+  data-show-report-link="false"
   data-capture-network-bodies="false"
   data-screenshot="true"
   data-screenshot-method="dom"
@@ -168,7 +174,8 @@ Use `data-*` attributes to configure the widget. All attributes are optional exc
 | `data-api-url` | `endpoint` | `https://api.bugdump.com` | Custom API endpoint |
 | `data-theme` | `theme` | `auto` | Widget theme: `light`, `dark`, or `auto` |
 | `data-hide-button` | `hideButton` | `false` | Hide the floating button |
-| `data-icon` | `icon` | `bug` | Custom trigger button icon (predefined name, URL, SVG, or emoji) |
+| `data-show-report-link` | `showReportLink` | `false` | Show a link to the created report on the success screen |
+| `data-icon` | `icon` | `chat` | Custom trigger button icon (predefined name, URL, SVG, or emoji) |
 | `data-capture-network-bodies` | `captureNetworkBodies` | `false` | Capture request/response bodies |
 | `data-screenshot` | `features.screenshot` | `true` | Screenshot capture button |
 | `data-screenshot-method` | `features.screenshotMethod` | `dom` | `dom` (html2canvas) or `screen-capture` (getDisplayMedia) |
@@ -216,8 +223,8 @@ Or via script tag:
 
 | Name | Description |
 |---|---|
-| `bug` | Bug icon (default) |
-| `chat` | Speech bubble |
+| `chat` | Speech bubble (default) |
+| `bug` | Bug icon |
 | `feedback` | Message bubble with text lines |
 | `lightning` | Lightning bolt |
 
@@ -229,6 +236,25 @@ Or via script tag:
 | Starts with `<` | HTML/SVG string |
 | Starts with `http://`, `https://`, `//`, or `data:` | Image URL |
 | Anything else | Text/emoji |
+
+## Report Link on Success Screen
+
+When `showReportLink` is enabled, the success screen after submission shows a direct link to the created report in your Bugdump dashboard, along with a "Copy link" button. This is useful for team-internal widgets where reporters should be able to track their submissions.
+
+```typescript
+Bugdump.init({
+  apiKey: 'your-api-key',
+  showReportLink: true,
+});
+```
+
+Or via script tag:
+
+```html
+<script src="https://bugdump.com/sdk/latest.js" data-api-key="your-api-key" data-show-report-link="true"></script>
+```
+
+The link points to your project dashboard (e.g. `https://app.bugdump.com/projects/my-project/reports/{id}`). The dashboard URL is fetched automatically from the server — no additional configuration needed.
 
 ## Public Portal Link
 

@@ -39,6 +39,8 @@ export interface BugdumpTranslations {
   badgeRecording?: string;
   badgeReplay?: string;
   badgeVoiceNote?: string;
+  copyLink?: string;
+  copied?: string;
 }
 
 export type BugdumpIcon = 'bug' | 'chat' | 'feedback' | 'lightning';
@@ -48,6 +50,7 @@ export interface BugdumpConfig {
   endpoint?: string;
   captureNetworkBodies?: boolean;
   hideButton?: boolean;
+  showReportLink?: boolean;
   theme?: BugdumpTheme;
   icon?: string;
   features?: BugdumpFeatures;
@@ -108,6 +111,7 @@ export interface WidgetConfig {
     removeBranding: boolean;
   };
   portalUrl?: string | null;
+  dashboardUrl?: string | null;
 }
 
 export interface HttpErrorResponse {

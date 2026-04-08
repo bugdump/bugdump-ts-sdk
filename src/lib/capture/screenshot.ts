@@ -1,7 +1,36 @@
 import html2canvas from 'html2canvas-pro';
 
-const DEFAULT_QUALITY = 0.85;
+const DEFAULT_QUALITY = 1;
 const DEFAULT_MIME_TYPE = 'image/jpeg';
+const PAGE_READY_TIMEOUT = 5000;
+
+async function waitForPageReady(): Promise<void> {
+  if (document.readyState !== 'complete') {
+    await Promise.race([
+      new Promise<void>((r) => window.addEventListener('load', () => r(), { once: true })),
+      new Promise<void>((r) => setTimeout(r, PAGE_READY_TIMEOUT)),
+    ]);
+  }
+
+  const images = Array.from(document.querySelectorAll('img'))
+    .filter((img) => img.src && img.offsetParent !== null);
+  const pendingImages = images.filter((img) => !img.complete);
+
+  if (pendingImages.length > 0) {
+    await Promise.race([
+      Promise.all(
+        pendingImages.map(
+          (img) =>
+            new Promise<void>((r) => {
+              img.addEventListener('load', () => r(), { once: true });
+              img.addEventListener('error', () => r(), { once: true });
+            }),
+        ),
+      ),
+      new Promise<void>((r) => setTimeout(r, PAGE_READY_TIMEOUT)),
+    ]);
+  }
+}
 
 export interface ScreenshotOptions {
   quality?: number;
@@ -23,6 +52,8 @@ export async function captureScreenshot(
     target = document.documentElement,
     filter,
   } = options;
+
+  await waitForPageReady();
 
   const width = window.innerWidth;
   const height = window.innerHeight;

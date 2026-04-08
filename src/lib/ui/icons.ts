@@ -22,7 +22,7 @@ const PREDEFINED_ICONS: Record<string, () => string> = {
 };
 
 export function resolveIcon(icon?: string): string {
-  if (!icon) return bugIcon();
+  if (!icon) return chatIcon();
 
   const predefined = PREDEFINED_ICONS[icon];
   if (predefined) {

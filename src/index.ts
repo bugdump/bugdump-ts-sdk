@@ -51,6 +51,7 @@ if (typeof document !== 'undefined') {
     const endpoint = el.getAttribute('data-api-url');
     const captureNetworkBodies = el.getAttribute('data-capture-network-bodies') === 'true';
     const hideButton = el.getAttribute('data-hide-button') === 'true';
+    const showReportLink = el.getAttribute('data-show-report-link') === 'true';
     const theme = el.getAttribute('data-theme') as 'light' | 'dark' | 'auto' | null;
     const icon = el.getAttribute('data-icon');
 
@@ -87,6 +88,7 @@ if (typeof document !== 'undefined') {
         ...(endpoint && { endpoint }),
         ...(captureNetworkBodies && { captureNetworkBodies }),
         ...(hideButton && { hideButton }),
+        ...(showReportLink && { showReportLink }),
         ...(theme && { theme }),
         ...(icon && { icon }),
         ...(Object.keys(features).length > 0 && { features }),
