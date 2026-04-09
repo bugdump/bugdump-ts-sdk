@@ -53,6 +53,7 @@ export class Panel {
   private submitting = false;
   private showingSuccess = false;
   private recording = false;
+  private recordingArmed = false;
   private mediaRecorder: MediaRecorder | null = null;
   private mediaStream: MediaStream | null = null;
   private recordedChunks: Blob[] = [];
@@ -300,6 +301,9 @@ export class Panel {
   private createDOM(): PanelElements {
     const root = document.createElement('div');
     root.className = 'bd-panel';
+    if (this.features.screenRecordingMethod === 'dom') {
+      root.classList.add('bd-panel--mode-dom');
+    }
 
     root.innerHTML = `
       <div class="bd-panel__header">
@@ -334,6 +338,7 @@ export class Panel {
           <button class="bd-recording-bar__mic" data-role="recording-bar-mic" aria-label="Toggle microphone">${micIcon()}</button>
           <button class="bd-recording-bar__mic-select" data-role="recording-bar-mic-select" aria-label="Select microphone">${chevronIcon()}</button>
         </div>
+        <button class="bd-recording-bar__start" data-role="recording-bar-start">${videoIcon()} ${this.t.startRecording}</button>
         <button class="bd-recording-bar__stop" data-role="recording-bar-stop">${stopIcon()} ${this.t.stop}</button>
         <button class="bd-recording-bar__discard" data-role="recording-bar-discard">${closeIcon()} ${this.t.cancel}</button>
       </div>
@@ -370,6 +375,7 @@ export class Panel {
       recordingBar: q<HTMLDivElement>('[data-role="recording-bar"]'),
       recordingBarTimer: q<HTMLSpanElement>('[data-role="recording-bar-timer"]'),
       recordingBarCanvas: q<HTMLCanvasElement>('[data-role="recording-bar-canvas"]'),
+      recordingBarStart: q<HTMLButtonElement>('[data-role="recording-bar-start"]'),
       recordingBarStop: q<HTMLButtonElement>('[data-role="recording-bar-stop"]'),
       recordingBarDiscard: q<HTMLButtonElement>('[data-role="recording-bar-discard"]'),
       recordingBarMic: q<HTMLButtonElement>('[data-role="recording-bar-mic"]'),
@@ -393,6 +399,7 @@ export class Panel {
     this.elements.fileInput.addEventListener('change', () => this.handleFileSelect());
     this.elements.reporterToggle.addEventListener('click', () => this.toggleReporter());
 
+    this.elements.recordingBarStart.addEventListener('click', () => this.startRecording());
     this.elements.recordingBarStop.addEventListener('click', () => this.stopRecording());
     this.elements.recordingBarDiscard.addEventListener('click', () => this.discardRecording());
     this.elements.recordingBarMic.addEventListener('click', () => this.toggleMic());
@@ -434,6 +441,8 @@ export class Panel {
 
     if (this.recording) {
       await this.stopRecordingAsync();
+    } else if (this.recordingArmed) {
+      this.discardRecording();
     }
 
     this.setSubmitting(true);
@@ -669,15 +678,31 @@ export class Panel {
       this.stopRecording();
       return;
     }
+    if (this.recordingArmed) return;
+    await this.armRecording();
+  }
+
+  private async armRecording(): Promise<void> {
+    if (this.features.screenRecordingMethod !== 'dom') {
+      const ok = await this.setupNativeRecorder();
+      if (!ok) return;
+    }
+    this.recordingArmed = true;
+    this.showRecordingBar();
+  }
+
+  private startRecording(): void {
+    if (this.recording) return;
+    if (!this.recordingArmed) return;
 
     if (this.features.screenRecordingMethod === 'dom') {
-      this.handleRecordDom();
+      this.startRecordingDom();
     } else {
-      await this.handleRecordNative();
+      this.startRecordingNative();
     }
   }
 
-  private handleRecordDom(): void {
+  private startRecordingDom(): void {
     if (!this.sessionReplayCollector) {
       console.warn('[Bugdump] Session replay collector not available for dom recording.');
       return;
@@ -687,116 +712,130 @@ export class Panel {
     this.setRecordingState(true);
   }
 
-  private async handleRecordNative(): Promise<void> {
+  private startRecordingNative(): void {
+    if (!this.mediaRecorder) return;
+    this.mediaRecorder.start(RECORDING_TIMESLICE_MS);
+    this.setRecordingState(true);
+    // Visualizer taps the mixed destination so it shows both display + mic audio
+    this.startAudioVisualizer();
+  }
+
+  private async setupNativeRecorder(): Promise<boolean> {
     try {
       this.mediaStream = await navigator.mediaDevices.getDisplayMedia({
         video: true,
         audio: true,
         preferCurrentTab: true,
       } as DisplayMediaStreamOptions);
-
-      const videoTracks = this.mediaStream.getVideoTracks();
-      const audioTracks = this.mediaStream.getAudioTracks();
-      if (audioTracks.length === 0) {
-        console.warn('[Bugdump] No display audio captured — user may not have shared tab audio');
-      }
-
-      // Set up a persistent AudioContext + destination for mixing audio sources.
-      // Mic can be connected/disconnected at any time without rebuilding the recorder.
-      this.audioContext = new AudioContext();
-      this.audioDestination = this.audioContext.createMediaStreamDestination();
-
-      // Connect display audio tracks (if user shared tab audio)
-      for (const track of audioTracks) {
-        const source = this.audioContext.createMediaStreamSource(new MediaStream([track]));
-        source.connect(this.audioDestination);
-      }
-
-      // Build the stream for MediaRecorder: video + mixed audio destination
-      const videoTrack = videoTracks[0]!;
-      const mixedAudioTrack = this.audioDestination.stream.getAudioTracks()[0]!;
-      const recordStream = new MediaStream([videoTrack, mixedAudioTrack]);
-
-      const mimeType = getSupportedMimeType();
-
-      this.recordedChunks = [];
-      this.recordedSize = 0;
-      this.mediaRecorder = new MediaRecorder(recordStream, { mimeType });
-
-      this.mediaRecorder.ondataavailable = (e) => {
-        if (e.data.size > 0) {
-          this.recordedSize += e.data.size;
-
-          if (this.recordedSize > this.maxMediaSize) {
-            console.warn(`[Bugdump] Recording stopped: max size exceeded (${Math.round(this.maxMediaSize / 1024 / 1024)}MB)`);
-            this.stopRecording();
-            return;
-          }
-
-          this.recordedChunks.push(e.data);
-        }
-      };
-
-      this.mediaRecorder.onstop = () => {
-        const blob = new Blob(this.recordedChunks, { type: this.mediaRecorder?.mimeType || 'video/webm' });
-        const thumbnailUrl = URL.createObjectURL(blob);
-        const recordingEndedAt = Date.now();
-        this.addAttachment({
-          id: generateAttachmentId(),
-          type: 'recording',
-          blob,
-          name: `recording-${Date.now()}.webm`,
-          thumbnailUrl,
-          metadata: {
-            recordingStartedAt: this.recordingStartTime,
-            recordingEndedAt,
-            durationMs: recordingEndedAt - this.recordingStartTime,
-          },
-        });
-        this.cleanupMediaStream();
-        this.setRecordingState(false);
-      };
-
-      this.mediaStream.getVideoTracks()[0]?.addEventListener('ended', () => {
-        this.stopRecording();
-      });
-
-      this.mediaRecorder.start(RECORDING_TIMESLICE_MS);
-      this.setRecordingState(true);
-
-      // Visualizer taps the mixed destination so it shows both display + mic audio
-      this.startAudioVisualizer();
     } catch (err) {
       console.warn('[Bugdump] Screen capture failed:', err);
+      return false;
+    }
+
+    const videoTracks = this.mediaStream.getVideoTracks();
+    const audioTracks = this.mediaStream.getAudioTracks();
+    if (audioTracks.length === 0) {
+      console.warn('[Bugdump] No display audio captured — user may not have shared tab audio');
+    }
+
+    // Set up a persistent AudioContext + destination for mixing audio sources.
+    // Mic can be connected/disconnected at any time without rebuilding the recorder.
+    this.audioContext = new AudioContext();
+    this.audioDestination = this.audioContext.createMediaStreamDestination();
+
+    for (const track of audioTracks) {
+      const source = this.audioContext.createMediaStreamSource(new MediaStream([track]));
+      source.connect(this.audioDestination);
+    }
+
+    const videoTrack = videoTracks[0]!;
+    const mixedAudioTrack = this.audioDestination.stream.getAudioTracks()[0]!;
+    const recordStream = new MediaStream([videoTrack, mixedAudioTrack]);
+
+    const mimeType = getSupportedMimeType();
+
+    this.recordedChunks = [];
+    this.recordedSize = 0;
+    this.mediaRecorder = new MediaRecorder(recordStream, { mimeType });
+
+    this.mediaRecorder.ondataavailable = (e) => {
+      if (e.data.size > 0) {
+        this.recordedSize += e.data.size;
+
+        if (this.recordedSize > this.maxMediaSize) {
+          console.warn(`[Bugdump] Recording stopped: max size exceeded (${Math.round(this.maxMediaSize / 1024 / 1024)}MB)`);
+          this.stopRecording();
+          return;
+        }
+
+        this.recordedChunks.push(e.data);
+      }
+    };
+
+    this.mediaRecorder.onstop = () => {
+      const blob = new Blob(this.recordedChunks, { type: this.mediaRecorder?.mimeType || 'video/webm' });
+      const thumbnailUrl = URL.createObjectURL(blob);
+      const recordingEndedAt = Date.now();
+      this.addAttachment({
+        id: generateAttachmentId(),
+        type: 'recording',
+        blob,
+        name: `recording-${Date.now()}.webm`,
+        thumbnailUrl,
+        metadata: {
+          recordingStartedAt: this.recordingStartTime,
+          recordingEndedAt,
+          durationMs: recordingEndedAt - this.recordingStartTime,
+        },
+      });
       this.cleanupMediaStream();
       this.setRecordingState(false);
-    }
+    };
+
+    videoTrack.addEventListener('ended', () => {
+      if (this.recording) {
+        this.stopRecording();
+      } else {
+        // User stopped sharing from the browser UI before clicking in-bar Record.
+        this.discardRecording();
+      }
+    });
+
+    return true;
   }
 
   private async toggleMic(): Promise<void> {
     if (this.micEnabled) {
       this.disconnectMic();
     } else {
-      // Connect using last selected device, or default
-      const audioConstraints: MediaTrackConstraints = this.selectedMicDeviceId
-        ? { deviceId: { exact: this.selectedMicDeviceId } }
-        : {};
-      try {
-        this.micStream = await navigator.mediaDevices.getUserMedia({ audio: audioConstraints });
-        const track = this.micStream.getAudioTracks()[0];
-        if (track) {
-          this.selectedMicDeviceId = track.getSettings().deviceId ?? null;
-        }
-        this.micEnabled = true;
-        this.elements.recordingBarMic.classList.add('bd-recording-bar__mic--active');
-        if (this.audioContext && this.audioDestination) {
-          this.micSource = this.audioContext.createMediaStreamSource(this.micStream);
-          this.micSource.connect(this.audioDestination);
-        }
-      } catch (err) {
-        console.warn('[Bugdump] Microphone access denied:', err);
-        this.flashMicError();
-      }
+      await this.enableMicWithDevice(this.selectedMicDeviceId);
+    }
+  }
+
+  private async enableMicWithDevice(deviceId: string | null): Promise<void> {
+    this.disconnectMic();
+
+    const audioConstraints: MediaTrackConstraints = deviceId
+      ? { deviceId: { exact: deviceId } }
+      : {};
+    try {
+      this.micStream = await navigator.mediaDevices.getUserMedia({ audio: audioConstraints });
+    } catch (err) {
+      console.warn('[Bugdump] Microphone access denied:', err);
+      this.flashMicError();
+      return;
+    }
+
+    const track = this.micStream.getAudioTracks()[0];
+    if (track) {
+      this.selectedMicDeviceId = track.getSettings().deviceId ?? deviceId;
+    }
+    this.micEnabled = true;
+    this.elements.recordingBarMic.classList.add('bd-recording-bar__mic--active');
+
+    if (this.audioContext && this.audioDestination) {
+      this.micSource = this.audioContext.createMediaStreamSource(this.micStream);
+      this.micSource.connect(this.audioDestination);
     }
   }
 
@@ -833,7 +872,10 @@ export class Panel {
       item.textContent = device.label || `Microphone ${devices.indexOf(device) + 1}`;
       item.addEventListener('click', () => {
         this.closeMicDeviceDropdown();
-        this.connectMic(device.deviceId);
+        this.selectedMicDeviceId = device.deviceId;
+        if (this.micEnabled) {
+          this.enableMicWithDevice(device.deviceId).catch(() => {});
+        }
       });
       dropdown.appendChild(item);
     }
@@ -866,32 +908,6 @@ export class Panel {
   private closeMicDeviceDropdown(): void {
     const existing = this.shadowRoot.querySelector('[data-role="mic-dropdown"]');
     if (existing) existing.remove();
-  }
-
-  private async connectMic(deviceId: string): Promise<void> {
-    // Disconnect previous mic if any
-    this.disconnectMic();
-
-    try {
-      this.micStream = await navigator.mediaDevices.getUserMedia({
-        audio: { deviceId: { exact: deviceId } },
-      });
-    } catch (err) {
-      console.warn('[Bugdump] Microphone access denied:', err);
-      this.flashMicError();
-      return;
-    }
-
-    this.selectedMicDeviceId = deviceId;
-    this.micEnabled = true;
-    this.elements.recordingBarMic.classList.add('bd-recording-bar__mic--active');
-
-    // Connect mic to the existing audio destination (no recorder rebuild needed)
-    if (this.audioContext && this.audioDestination) {
-      this.micSource = this.audioContext.createMediaStreamSource(this.micStream);
-      this.micSource.connect(this.audioDestination);
-    }
-
   }
 
   private disconnectMic(): void {
@@ -991,7 +1007,7 @@ export class Panel {
     this.recording = isRecording;
     if (isRecording) {
       this.recordingStartTime = Date.now();
-      this.showRecordingBar();
+      this.elements.root.classList.add('bd-panel--recording-active');
       this.updateRecordingBarTimer();
       this.recordingTimerInterval = setInterval(() => this.updateRecordingBarTimer(), 1000);
     } else {
@@ -1000,6 +1016,9 @@ export class Panel {
         this.recordingTimerInterval = null;
       }
       this.stopAudioVisualizer();
+      this.recordingArmed = false;
+      this.elements.recordingBarMic.classList.remove('bd-recording-bar__mic--active');
+      this.resetRecordingBarTimer();
       this.hideRecordingBar();
       this.elements.recordBtn.innerHTML = `${videoIcon()} ${this.t.recordButton}`;
       this.elements.recordBtn.style.color = '';
@@ -1020,6 +1039,7 @@ export class Panel {
   private hideRecordingBar(): void {
     this.elements.recordingBar.style.display = 'none';
     this.elements.root.classList.remove('bd-panel--recording');
+    this.elements.root.classList.remove('bd-panel--recording-active');
     const header = this.elements.root.querySelector<HTMLElement>('.bd-panel__header');
     const footer = this.elements.root.querySelector<HTMLElement>('.bd-panel__footer');
     if (header) header.style.display = '';
@@ -1029,20 +1049,30 @@ export class Panel {
 
   private discardRecording(): void {
     if (this.features.screenRecordingMethod === 'dom') {
-      if (this.sessionReplayCollector) {
+      if (this.recording && this.sessionReplayCollector) {
         this.sessionReplayCollector.stopRecording();
       }
     } else {
-      if (this.mediaRecorder && this.mediaRecorder.state !== 'inactive') {
-        // Clear onstop so it doesn't add the attachment
-        this.mediaRecorder.onstop = null;
-        this.mediaRecorder.stop();
+      if (this.mediaRecorder) {
+        if (this.mediaRecorder.state !== 'inactive') {
+          // Clear onstop so it doesn't add the attachment
+          this.mediaRecorder.onstop = null;
+          this.mediaRecorder.stop();
+        }
+        this.mediaRecorder = null;
       }
       this.cleanupMediaStream();
     }
     this.recordedChunks = [];
     this.recordedSize = 0;
     this.setRecordingState(false);
+  }
+
+  private resetRecordingBarTimer(): void {
+    const maxMin = Math.floor(MAX_RECORDING_DURATION_S / 60);
+    const maxSec = MAX_RECORDING_DURATION_S % 60;
+    const limit = `${maxMin}:${String(maxSec).padStart(2, '0')}`;
+    this.elements.recordingBarTimer.textContent = `0:00 / ${limit}`;
   }
 
   private updateRecordingBarTimer(): void {

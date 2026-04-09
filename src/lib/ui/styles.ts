@@ -603,8 +603,12 @@ export function createStyles(): string {
       width: 10px;
       height: 10px;
       border-radius: 50%;
-      background: #ef4444;
+      background: var(--bd-text-muted);
       flex-shrink: 0;
+    }
+
+    .bd-panel--recording-active .bd-recording-bar__indicator {
+      background: #ef4444;
       animation: bd-pulse 1.2s ease-in-out infinite;
     }
 
@@ -623,9 +627,14 @@ export function createStyles(): string {
     }
 
     .bd-recording-bar__canvas {
+      display: none;
       flex: 1;
       height: 28px;
       min-width: 60px;
+    }
+
+    .bd-panel--recording-active .bd-recording-bar__canvas {
+      display: block;
     }
 
     .bd-recording-bar__mic-group {
@@ -762,8 +771,34 @@ export function createStyles(): string {
       font-weight: 500;
     }
 
-    .bd-recording-bar__stop {
+    .bd-recording-bar__start {
       display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 6px 12px;
+      background: var(--bd-primary);
+      color: var(--bd-primary-text);
+      border: none;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 500;
+      font-family: inherit;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background-color 0.15s;
+    }
+
+    .bd-recording-bar__start:hover {
+      background: var(--bd-primary-hover);
+    }
+
+    .bd-recording-bar__start svg {
+      width: 14px;
+      height: 14px;
+    }
+
+    .bd-recording-bar__stop {
+      display: none;
       align-items: center;
       gap: 5px;
       padding: 6px 12px;
@@ -786,6 +821,23 @@ export function createStyles(): string {
     .bd-recording-bar__stop svg {
       width: 14px;
       height: 14px;
+    }
+
+    .bd-panel--recording-active .bd-recording-bar__start {
+      display: none;
+    }
+
+    .bd-panel--recording-active .bd-recording-bar__stop {
+      display: inline-flex;
+    }
+
+    /* DOM mode: rrweb has no audio capture, so hide audio-related controls. */
+    .bd-panel--mode-dom .bd-recording-bar__canvas {
+      display: none;
+    }
+
+    .bd-panel--mode-dom .bd-recording-bar__mic-group {
+      display: none;
     }
 
     .bd-recording-bar__discard {

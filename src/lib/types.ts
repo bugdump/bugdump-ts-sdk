@@ -17,6 +17,7 @@ export interface BugdumpTranslations {
   attachButton?: string;
   screenshotButton?: string;
   recordButton?: string;
+  startRecording?: string;
   sendButton?: string;
   reporterToggle?: string;
   namePlaceholder?: string;

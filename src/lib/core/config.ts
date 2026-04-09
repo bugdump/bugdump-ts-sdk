@@ -17,6 +17,7 @@ export const DEFAULT_TRANSLATIONS: Required<BugdumpTranslations> = {
   attachButton: 'Attach',
   screenshotButton: 'Screenshot',
   recordButton: 'Record',
+  startRecording: 'Record',
   sendButton: 'Send',
   reporterToggle: 'Reporter info',
   namePlaceholder: 'Your name',

@@ -48,6 +48,7 @@ export interface PanelElements {
   recordingBar: HTMLDivElement;
   recordingBarTimer: HTMLSpanElement;
   recordingBarCanvas: HTMLCanvasElement;
+  recordingBarStart: HTMLButtonElement;
   recordingBarStop: HTMLButtonElement;
   recordingBarDiscard: HTMLButtonElement;
   recordingBarMic: HTMLButtonElement;
