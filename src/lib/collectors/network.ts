@@ -1,3 +1,5 @@
+import type { NetworkFilterOptions } from '../types';
+
 export interface NetworkRequestEntry {
   method: string;
   url: string;
@@ -14,6 +16,7 @@ export interface NetworkRequestEntry {
 
 export interface NetworkCollectorOptions {
   captureBodies?: boolean;
+  filter?: NetworkFilterOptions;
 }
 
 const MAX_ENTRIES = 30;
@@ -56,10 +59,37 @@ export class NetworkCollector {
   }
 
   private push(entry: NetworkRequestEntry): void {
+    if (!this.shouldKeep(entry)) return;
     this.buffer.push(entry);
     if (this.buffer.length > MAX_ENTRIES) {
       this.buffer.shift();
     }
+  }
+
+  private shouldKeep(entry: NetworkRequestEntry): boolean {
+    const filter = this.options.filter;
+    if (!filter) return true;
+
+    if (filter.excludeMethods && filter.excludeMethods.includes(entry.method)) return false;
+
+    if (filter.includeUrls && filter.includeUrls.length > 0) {
+      const matches = filter.includeUrls.some((p) =>
+        typeof p === 'string' ? entry.url.includes(p) : p.test(entry.url),
+      );
+      if (!matches) return false;
+    }
+
+    if (filter.excludeUrls && filter.excludeUrls.length > 0) {
+      for (const pattern of filter.excludeUrls) {
+        if (typeof pattern === 'string' ? entry.url.includes(pattern) : pattern.test(entry.url)) {
+          return false;
+        }
+      }
+    }
+
+    if (filter.filter && !filter.filter(entry)) return false;
+
+    return true;
   }
 
   private patchFetch(): void {

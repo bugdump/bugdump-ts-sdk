@@ -7,6 +7,7 @@ export interface BugdumpFeatures {
   screenRecordingMethod?: CaptureMethod;
   sessionReplay?: boolean;
   attachments?: boolean;
+  allowTaskAttach?: boolean;
 }
 
 export type BugdumpTheme = 'light' | 'dark' | 'auto';
@@ -22,6 +23,8 @@ export interface BugdumpTranslations {
   reporterToggle?: string;
   namePlaceholder?: string;
   emailPlaceholder?: string;
+  taskAttachToggle?: string;
+  taskIdPlaceholder?: string;
   capturing?: string;
   stop?: string;
   sending?: string;
@@ -46,6 +49,41 @@ export interface BugdumpTranslations {
 
 export type BugdumpIcon = 'bug' | 'chat' | 'feedback' | 'lightning';
 
+export type ConsoleLogLevel = 'log' | 'warn' | 'error' | 'info' | 'debug';
+
+export interface ConsoleFilterEntry {
+  level: ConsoleLogLevel;
+  args: unknown[];
+  timestamp: number;
+}
+
+export interface NetworkFilterEntry {
+  method: string;
+  url: string;
+  status: number | null;
+  statusText: string | null;
+  requestHeaders: Record<string, string>;
+  responseHeaders: Record<string, string>;
+  requestBody: string | null;
+  responseBody: string | null;
+  duration: number | null;
+  startedAt: number;
+  error: string | null;
+}
+
+export interface ConsoleFilterOptions {
+  levels?: ConsoleLogLevel[];
+  exclude?: Array<string | RegExp>;
+  filter?: (entry: ConsoleFilterEntry) => boolean;
+}
+
+export interface NetworkFilterOptions {
+  excludeUrls?: Array<string | RegExp>;
+  includeUrls?: Array<string | RegExp>;
+  excludeMethods?: string[];
+  filter?: (entry: NetworkFilterEntry) => boolean;
+}
+
 export interface BugdumpConfig {
   apiKey: string;
   endpoint?: string;
@@ -56,6 +94,8 @@ export interface BugdumpConfig {
   icon?: string;
   features?: BugdumpFeatures;
   translations?: BugdumpTranslations;
+  consoleFilter?: ConsoleFilterOptions;
+  networkFilter?: NetworkFilterOptions;
 }
 
 export interface BugdumpUserContext {
@@ -66,6 +106,8 @@ export interface BugdumpUserContext {
 }
 
 export interface ReportPayload {
+  taskId?: number;
+  title?: string;
   description: string;
   priority?: 'low' | 'medium' | 'high' | 'critical';
   reporterName?: string;
@@ -89,7 +131,8 @@ export interface ReportPayload {
 
 export interface ReportResponse {
   id: string;
-  publicId: string;
+  taskId: string;
+  taskPublicId: number;
 }
 
 export interface UploadRequest {

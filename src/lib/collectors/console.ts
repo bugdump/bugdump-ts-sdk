@@ -1,7 +1,13 @@
+import type { ConsoleFilterOptions } from '../types';
+
 export interface ConsoleLogEntry {
   level: 'log' | 'warn' | 'error' | 'info' | 'debug';
   args: unknown[];
   timestamp: number;
+}
+
+export interface ConsoleCollectorOptions {
+  filter?: ConsoleFilterOptions;
 }
 
 const MAX_ENTRIES = 50;
@@ -14,6 +20,11 @@ export class ConsoleCollector {
   private buffer: ConsoleLogEntry[] = [];
   private originals = new Map<ConsoleMethod, (...args: unknown[]) => void>();
   private active = false;
+  private options: ConsoleCollectorOptions;
+
+  constructor(options: ConsoleCollectorOptions = {}) {
+    this.options = options;
+  }
 
   start(): void {
     if (this.active) return;
@@ -53,10 +64,31 @@ export class ConsoleCollector {
   }
 
   private push(entry: ConsoleLogEntry): void {
+    if (!this.shouldKeep(entry)) return;
     this.buffer.push(entry);
     if (this.buffer.length > MAX_ENTRIES) {
       this.buffer.shift();
     }
+  }
+
+  private shouldKeep(entry: ConsoleLogEntry): boolean {
+    const filter = this.options.filter;
+    if (!filter) return true;
+
+    if (filter.levels && !filter.levels.includes(entry.level)) return false;
+
+    if (filter.exclude && filter.exclude.length > 0) {
+      const target = entry.args.map((a) => (typeof a === 'string' ? a : JSON.stringify(a))).join(' ');
+      for (const pattern of filter.exclude) {
+        if (typeof pattern === 'string' ? target.includes(pattern) : pattern.test(target)) {
+          return false;
+        }
+      }
+    }
+
+    if (filter.filter && !filter.filter(entry)) return false;
+
+    return true;
   }
 
   private serializeArgs(args: unknown[]): unknown[] {

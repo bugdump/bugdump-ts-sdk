@@ -31,7 +31,9 @@ export class HttpClient {
   }
 
   async submitReport(payload: ReportPayload): Promise<ReportResponse> {
-    return this.post<ReportResponse>('/api/widget/v1/reports', payload);
+    const { taskId, ...rest } = payload;
+    const wireBody = taskId !== undefined ? { ...rest, taskPublicId: taskId } : rest;
+    return this.post<ReportResponse>('/api/widget/v1/reports', wireBody);
   }
 
   async requestUpload(request: UploadRequest): Promise<UploadResponse> {

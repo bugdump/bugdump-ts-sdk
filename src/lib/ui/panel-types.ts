@@ -19,6 +19,7 @@ export interface PanelSubmitData {
   description: string;
   reporterName: string;
   reporterEmail: string;
+  taskPublicId: number | null;
   attachments: Attachment[];
 }
 
@@ -28,6 +29,7 @@ export interface PanelFeatures {
   screenRecording: boolean;
   screenRecordingMethod: CaptureMethod;
   attachments: boolean;
+  allowTaskAttach: boolean;
 }
 
 export interface PanelElements {
@@ -43,6 +45,9 @@ export interface PanelElements {
   attachmentsList: HTMLDivElement;
   reporterToggle: HTMLButtonElement;
   reporterFields: HTMLDivElement;
+  taskToggle: HTMLButtonElement;
+  taskFields: HTMLDivElement;
+  taskInput: HTMLInputElement;
   body: HTMLDivElement;
   successView: HTMLDivElement;
   recordingBar: HTMLDivElement;

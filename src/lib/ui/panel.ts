@@ -62,6 +62,7 @@ export class Panel {
   private recordingStartTime = 0;
   private recordingTimerInterval: ReturnType<typeof setInterval> | null = null;
   private reporterVisible = false;
+  private taskFieldsVisible = false;
   private annotationOverlay: AnnotationOverlay | null = null;
   private annotationContainer: HTMLDivElement | null = null;
   private annotationStyleEl: HTMLStyleElement | null = null;
@@ -88,7 +89,7 @@ export class Panel {
   private sessionReplayAttached = false;
 
   constructor(private shadowRoot: ShadowRoot, features?: PanelFeatures, translations?: BugdumpTranslations) {
-    this.features = features ?? { screenshot: true, screenshotMethod: 'dom', screenRecording: true, screenRecordingMethod: 'dom', attachments: true };
+    this.features = features ?? { screenshot: true, screenshotMethod: 'dom', screenRecording: true, screenRecordingMethod: 'dom', attachments: true, allowTaskAttach: false };
     this.t = { ...DEFAULT_TRANSLATIONS, ...translations };
     this.elements = this.createDOM();
     this.applyFeatures();
@@ -162,6 +163,13 @@ export class Panel {
     this.elements.screenshotBtn.style.display = this.features.screenshot ? '' : 'none';
     this.elements.recordBtn.style.display = this.features.screenRecording ? '' : 'none';
     this.elements.attachBtn.style.display = this.features.attachments ? '' : 'none';
+    this.elements.taskToggle.style.display = this.features.allowTaskAttach ? '' : 'none';
+    if (!this.features.allowTaskAttach) {
+      this.taskFieldsVisible = false;
+      this.elements.taskToggle.classList.remove('bd-reporter-toggle--open');
+      this.elements.taskFields.classList.remove('bd-reporter-fields--visible');
+      this.elements.taskInput.value = '';
+    }
   }
 
   show(): void {
@@ -328,6 +336,12 @@ export class Panel {
           <input class="bd-input" type="text" placeholder="${this.t.namePlaceholder}" data-role="name" />
           <input class="bd-input" type="email" placeholder="${this.t.emailPlaceholder}" data-role="email" />
         </div>
+        <button class="bd-reporter-toggle" data-action="toggle-task" style="display:none">
+          ${chevronIcon()} ${this.t.taskAttachToggle}
+        </button>
+        <div class="bd-reporter-fields" data-role="task-fields">
+          <input class="bd-input" type="text" inputmode="numeric" pattern="[0-9]*" placeholder="${this.t.taskIdPlaceholder}" data-role="task-id" />
+        </div>
         <input class="bd-file-input" type="file" multiple data-role="file-input" />
       </div>
       <div class="bd-recording-bar" data-role="recording-bar" style="display:none">
@@ -370,6 +384,9 @@ export class Panel {
       attachmentsList: q<HTMLDivElement>('[data-role="attachments"]'),
       reporterToggle: q<HTMLButtonElement>('[data-action="toggle-reporter"]'),
       reporterFields: q<HTMLDivElement>('[data-role="reporter-fields"]'),
+      taskToggle: q<HTMLButtonElement>('[data-action="toggle-task"]'),
+      taskFields: q<HTMLDivElement>('[data-role="task-fields"]'),
+      taskInput: q<HTMLInputElement>('[data-role="task-id"]'),
       body: q<HTMLDivElement>('[data-role="body"]'),
       successView: q<HTMLDivElement>('[data-role="success"]'),
       recordingBar: q<HTMLDivElement>('[data-role="recording-bar"]'),
@@ -398,6 +415,7 @@ export class Panel {
     this.elements.attachBtn.addEventListener('click', () => this.elements.fileInput.click());
     this.elements.fileInput.addEventListener('change', () => this.handleFileSelect());
     this.elements.reporterToggle.addEventListener('click', () => this.toggleReporter());
+    this.elements.taskToggle.addEventListener('click', () => this.toggleTaskFields());
 
     this.elements.recordingBarStart.addEventListener('click', () => this.startRecording());
     this.elements.recordingBarStop.addEventListener('click', () => this.stopRecording());
@@ -448,13 +466,16 @@ export class Panel {
     this.setSubmitting(true);
 
     try {
+      const taskPublicId = this.features.allowTaskAttach ? parseTaskIdInput(this.elements.taskInput.value) : null;
+
       const result = await this.onSubmit({
         description,
         reporterName: this.elements.nameInput.value.trim(),
         reporterEmail: this.elements.emailInput.value.trim(),
+        taskPublicId,
         attachments: [...this.attachments],
       });
-      this.showSuccessView(result.id);
+      this.showSuccessView(String(result.taskPublicId));
     } catch {
       this.setSubmitting(false);
       this.showError(this.t.errorMessage);
@@ -1292,6 +1313,15 @@ export class Panel {
     this.elements.reporterFields.classList.toggle('bd-reporter-fields--visible', this.reporterVisible);
   }
 
+  private toggleTaskFields(): void {
+    this.taskFieldsVisible = !this.taskFieldsVisible;
+    this.elements.taskToggle.classList.toggle('bd-reporter-toggle--open', this.taskFieldsVisible);
+    this.elements.taskFields.classList.toggle('bd-reporter-fields--visible', this.taskFieldsVisible);
+    if (this.taskFieldsVisible) {
+      this.elements.taskInput.focus();
+    }
+  }
+
   setUploadProgress(current: number, total: number, filePercent: number): void {
     if (total === 0) return;
     const overallPercent = Math.round(((current - 1 + filePercent / 100) / total) * 100);
@@ -1375,5 +1405,12 @@ export class Panel {
       }
     }
   }
+}
+
+function parseTaskIdInput(raw: string): number | null {
+  const digits = raw.replace(/\D/g, '');
+  if (!digits) return null;
+  const n = Number(digits);
+  return Number.isInteger(n) && n > 0 ? n : null;
 }
 

@@ -1,5 +1,8 @@
 import type { BugdumpConfig, BugdumpFeatures, BugdumpTranslations, CaptureMethod } from '../types';
 
+export type ResolvedBugdumpConfig = Required<Omit<BugdumpConfig, 'consoleFilter' | 'networkFilter'>> &
+  Pick<BugdumpConfig, 'consoleFilter' | 'networkFilter'>;
+
 const DEFAULT_ENDPOINT = 'https://api.bugdump.com';
 
 const DEFAULT_FEATURES: Required<BugdumpFeatures> = {
@@ -9,6 +12,7 @@ const DEFAULT_FEATURES: Required<BugdumpFeatures> = {
   screenRecordingMethod: 'dom' as CaptureMethod,
   sessionReplay: true,
   attachments: true,
+  allowTaskAttach: false,
 };
 
 export const DEFAULT_TRANSLATIONS: Required<BugdumpTranslations> = {
@@ -22,6 +26,8 @@ export const DEFAULT_TRANSLATIONS: Required<BugdumpTranslations> = {
   reporterToggle: 'Reporter info',
   namePlaceholder: 'Your name',
   emailPlaceholder: 'Your email',
+  taskAttachToggle: 'Attach to task',
+  taskIdPlaceholder: 'Task ID',
   capturing: 'Capturing...',
   stop: 'Stop',
   sending: 'Sending...',
@@ -44,7 +50,7 @@ export const DEFAULT_TRANSLATIONS: Required<BugdumpTranslations> = {
   copied: 'Copied!',
 };
 
-export function resolveConfig(config: BugdumpConfig): Required<BugdumpConfig> {
+export function resolveConfig(config: BugdumpConfig): ResolvedBugdumpConfig {
   return {
     apiKey: config.apiKey,
     endpoint: (config.endpoint || DEFAULT_ENDPOINT).replace(/\/+$/, ''),
@@ -55,5 +61,7 @@ export function resolveConfig(config: BugdumpConfig): Required<BugdumpConfig> {
     icon: config.icon ?? '',
     features: { ...DEFAULT_FEATURES, ...config.features },
     translations: { ...DEFAULT_TRANSLATIONS, ...config.translations },
+    consoleFilter: config.consoleFilter,
+    networkFilter: config.networkFilter,
   };
 }

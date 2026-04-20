@@ -1,5 +1,5 @@
 import type { BugdumpConfig, BugdumpUserContext, ReportPayload, ReportResponse } from './types';
-import { resolveConfig } from './core/config';
+import { resolveConfig, type ResolvedBugdumpConfig } from './core/config';
 import { createInitialState, type SdkState } from './core/state';
 import { HttpClient } from './http-client';
 import { ConsoleCollector } from './collectors/console';
@@ -56,7 +56,11 @@ export class Bugdump {
     instance.state.config = resolved;
     instance.state.initialized = true;
     instance.httpClient = new HttpClient(resolved.endpoint, resolved.apiKey);
-    instance.networkCollector = new NetworkCollector({ captureBodies: resolved.captureNetworkBodies });
+    instance.consoleCollector = new ConsoleCollector({ filter: resolved.consoleFilter });
+    instance.networkCollector = new NetworkCollector({
+      captureBodies: resolved.captureNetworkBodies,
+      filter: resolved.networkFilter,
+    });
 
     if (Bugdump.isBrowser) {
       instance.consoleCollector.start();
@@ -119,8 +123,11 @@ export class Bugdump {
     this.state.customContext = { ...this.state.customContext, ...context };
   }
 
-  open(): void {
+  open(options?: { taskId?: number }): void {
     this.ensureInitialized();
+    if (options?.taskId !== undefined) {
+      this.state.activeTaskId = options.taskId;
+    }
     this.state.widgetOpen = true;
     this.widget?.openPanel();
   }
@@ -129,6 +136,20 @@ export class Bugdump {
     this.ensureInitialized();
     this.state.widgetOpen = false;
     this.widget?.close();
+  }
+
+  identifyTask(taskPublicId: number): void {
+    this.ensureInitialized();
+    this.state.activeTaskId = taskPublicId;
+  }
+
+  clearTask(): void {
+    this.ensureInitialized();
+    this.state.activeTaskId = null;
+  }
+
+  getActiveTaskId(): number | null {
+    return this.state.activeTaskId;
   }
 
   collectTelemetry(): TelemetrySnapshot {
@@ -159,7 +180,7 @@ export class Bugdump {
     Bugdump.instance = null;
   }
 
-  getConfig(): Required<BugdumpConfig> | null {
+  getConfig(): ResolvedBugdumpConfig | null {
     return this.state.config;
   }
 
@@ -195,6 +216,7 @@ export class Bugdump {
             screenRecording: features.screenRecording ?? true,
             screenRecordingMethod: features.screenRecordingMethod ?? 'dom',
             attachments: features.attachments ?? true,
+            allowTaskAttach: features.allowTaskAttach ?? false,
           }
         : undefined,
       translations: this.state.config?.translations,
@@ -241,6 +263,7 @@ export class Bugdump {
     }
 
     const payload: ReportPayload = {
+      taskId: data.taskPublicId ?? this.state.activeTaskId ?? undefined,
       description: data.description,
       reporterName: data.reporterName || this.state.user?.name || undefined,
       reporterEmail: data.reporterEmail || this.state.user?.email || undefined,

@@ -144,6 +144,53 @@ const bugdump = Bugdump.init({
 | `copyLink` | `Copy link` | Copy report link button label (shown when `showReportLink` is enabled) |
 | `copied` | `Copied!` | Feedback text after copying the report link |
 
+## Filtering Noise
+
+Embedding the widget on pages with chatty third-party scripts (analytics, feature-flag pollers, health checks) means every report ships a lot of noise. Use `consoleFilter` and `networkFilter` to drop entries *before* they enter the rolling buffers — so the useful ones don't get evicted, and sensitive third-party traffic never leaves the browser.
+
+### npm
+
+```typescript
+Bugdump.init({
+  apiKey: 'your-api-key',
+  consoleFilter: {
+    levels: ['warn', 'error'],                  // drop info/debug/log
+    exclude: ['[HMR]', /^\[Vue warn\]/],        // strings are substring, RegExp uses .test()
+    filter: (entry) => !entry.args[0]?.toString().startsWith('[GA]'),
+  },
+  networkFilter: {
+    excludeUrls: ['segment.io', /\/health$/],   // drop analytics + health checks
+    excludeMethods: ['OPTIONS'],                 // drop CORS preflights
+    // includeUrls: ['api.myapp.com'],           // if set, drop anything that doesn't match
+    filter: (entry) => entry.status !== 401,
+  },
+});
+```
+
+**Evaluation order** (for both console and network):
+
+1. Fast structural checks (`levels`, `excludeMethods`)
+2. `includeUrls` (network only) — if set and no match, drop
+3. `excludeUrls` / `exclude` — if any match, drop
+4. Custom `filter()` — return `false` to drop; runs last
+
+String patterns are **substring** matches (case-sensitive). RegExp patterns use `.test()`. `levels` and `excludeMethods` are exact-match lists.
+
+### Script Tag
+
+The script-tag version accepts the same filters as JSON on `data-console-filter` / `data-network-filter`. **Strings only** — regex and custom `filter()` predicates are npm-only (functions and regex don't serialize).
+
+```html
+<script
+  src="https://bugdump.com/sdk/latest.js"
+  data-api-key="your-api-key"
+  data-console-filter='{"levels":["warn","error"],"exclude":["[HMR]","[Vue warn]"]}'
+  data-network-filter='{"excludeUrls":["segment.io","/health"],"excludeMethods":["OPTIONS"]}'
+></script>
+```
+
+Unknown fields or non-string array entries in the JSON are ignored with a console warning — a malformed filter attribute never breaks SDK initialization.
+
 ### Script Tag
 
 Use `data-*` attributes to configure the widget. All attributes are optional except `data-api-key`.
@@ -184,6 +231,8 @@ Use `data-*` attributes to configure the widget. All attributes are optional exc
 | `data-session-replay` | `features.sessionReplay` | `true` | Background session replay collection |
 | `data-attachments` | `features.attachments` | `true` | File attachment button |
 | `data-translations` | `translations` | — | JSON string with translation overrides |
+| `data-console-filter` | `consoleFilter` | — | JSON object with `levels` / `exclude` arrays (strings only) |
+| `data-network-filter` | `networkFilter` | — | JSON object with `excludeUrls` / `includeUrls` / `excludeMethods` arrays (strings only) |
 
 ### Theme
 
@@ -504,6 +553,8 @@ import type {
   BugdumpTranslations,
   BugdumpUserContext,
   CaptureMethod,
+  ConsoleFilterOptions,
+  NetworkFilterOptions,
   ReportPayload,
   ReportResponse,
   TelemetrySnapshot,

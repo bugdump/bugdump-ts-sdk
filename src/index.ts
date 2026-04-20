@@ -9,6 +9,11 @@ export type {
   BugdumpTranslations,
   BugdumpUserContext,
   CaptureMethod,
+  ConsoleFilterEntry,
+  ConsoleFilterOptions,
+  ConsoleLogLevel,
+  NetworkFilterEntry,
+  NetworkFilterOptions,
   ReportPayload,
   ReportResponse,
   UploadRequest,
@@ -62,6 +67,7 @@ if (typeof document !== 'undefined') {
     if (el.hasAttribute('data-screen-recording-method')) features.screenRecordingMethod = el.getAttribute('data-screen-recording-method') || 'dom';
     if (el.hasAttribute('data-session-replay')) features.sessionReplay = el.getAttribute('data-session-replay') !== 'false';
     if (el.hasAttribute('data-attachments')) features.attachments = el.getAttribute('data-attachments') !== 'false';
+    if (el.hasAttribute('data-allow-task-attach')) features.allowTaskAttach = el.getAttribute('data-allow-task-attach') !== 'false';
 
     let translations: Record<string, string> | undefined;
     const translationsAttr = el.getAttribute('data-translations');
@@ -72,6 +78,16 @@ if (typeof document !== 'undefined') {
         console.warn('[Bugdump] Auto-init: invalid data-translations JSON, ignoring.');
       }
     }
+
+    const consoleFilter = parseFilterAttribute(el.getAttribute('data-console-filter'), 'data-console-filter', [
+      'levels',
+      'exclude',
+    ]);
+    const networkFilter = parseFilterAttribute(el.getAttribute('data-network-filter'), 'data-network-filter', [
+      'excludeUrls',
+      'includeUrls',
+      'excludeMethods',
+    ]);
 
     console.debug('[Bugdump] Auto-init config:', {
       apiKey: apiKey ? `${apiKey.slice(0, 8)}…` : null,
@@ -93,6 +109,8 @@ if (typeof document !== 'undefined') {
         ...(icon && { icon }),
         ...(Object.keys(features).length > 0 && { features }),
         ...(translations && { translations }),
+        ...(consoleFilter && { consoleFilter }),
+        ...(networkFilter && { networkFilter }),
       });
       console.debug('[Bugdump] Auto-init: initialized successfully');
     } else {
@@ -101,4 +119,40 @@ if (typeof document !== 'undefined') {
   } else {
     console.debug('[Bugdump] Auto-init: no script tag with data-api-key found, skipping');
   }
+}
+
+function parseFilterAttribute(
+  raw: string | null,
+  attrName: string,
+  arrayFields: string[],
+): Record<string, unknown> | undefined {
+  if (!raw) return undefined;
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    console.warn(`[Bugdump] Auto-init: invalid ${attrName} JSON, ignoring.`);
+    return undefined;
+  }
+
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    console.warn(`[Bugdump] Auto-init: ${attrName} must be a JSON object, ignoring.`);
+    return undefined;
+  }
+
+  const result: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(parsed as Record<string, unknown>)) {
+    if (!arrayFields.includes(key)) {
+      console.warn(`[Bugdump] Auto-init: ${attrName} has unknown field "${key}", ignoring.`);
+      continue;
+    }
+    if (!Array.isArray(value) || !value.every((v) => typeof v === 'string')) {
+      console.warn(`[Bugdump] Auto-init: ${attrName}.${key} must be an array of strings, ignoring.`);
+      continue;
+    }
+    result[key] = value;
+  }
+
+  return Object.keys(result).length > 0 ? result : undefined;
 }
