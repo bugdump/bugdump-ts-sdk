@@ -557,6 +557,46 @@ export function createStyles(): string {
       background: var(--bd-hover);
     }
 
+    .bd-success-actions {
+      padding: 12px 20px;
+      border-top: 1px solid var(--bd-border);
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 8px;
+    }
+
+    .bd-success-action-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 16px;
+      font-size: 14px;
+      font-weight: 500;
+      font-family: inherit;
+      border: 1px solid var(--bd-border);
+      border-radius: 8px;
+      background: var(--bd-bg);
+      color: var(--bd-text);
+      cursor: pointer;
+      transition: background-color 0.15s, border-color 0.15s;
+    }
+
+    .bd-success-action-btn:hover {
+      background: var(--bd-hover);
+    }
+
+    .bd-success-action-btn--primary {
+      background: var(--bd-primary);
+      color: var(--bd-primary-text);
+      border-color: var(--bd-primary);
+    }
+
+    .bd-success-action-btn--primary:hover {
+      background: var(--bd-primary-hover);
+      border-color: var(--bd-primary-hover);
+    }
+
     .bd-spinner {
       width: 20px;
       height: 20px;

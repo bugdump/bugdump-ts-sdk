@@ -48,6 +48,8 @@ export const DEFAULT_TRANSLATIONS: Required<BugdumpTranslations> = {
   badgeVoiceNote: 'Voice note',
   copyLink: 'Copy link',
   copied: 'Copied!',
+  closeButton: 'Close',
+  submitAnother: 'Submit another',
 };
 
 export function resolveConfig(config: BugdumpConfig): ResolvedBugdumpConfig {

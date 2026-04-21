@@ -50,6 +50,9 @@ export interface PanelElements {
   taskInput: HTMLInputElement;
   body: HTMLDivElement;
   successView: HTMLDivElement;
+  successActions: HTMLDivElement;
+  successCloseBtn: HTMLButtonElement;
+  successNewBtn: HTMLButtonElement;
   recordingBar: HTMLDivElement;
   recordingBarTimer: HTMLSpanElement;
   recordingBarCanvas: HTMLCanvasElement;

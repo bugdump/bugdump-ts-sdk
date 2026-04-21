@@ -283,6 +283,10 @@ export class Panel {
     this.elements.textarea.style.height = '';
     this.elements.nameInput.value = '';
     this.elements.emailInput.value = '';
+    this.elements.taskInput.value = '';
+    this.taskFieldsVisible = false;
+    this.elements.taskToggle.classList.remove('bd-reporter-toggle--open');
+    this.elements.taskFields.classList.remove('bd-reporter-fields--visible');
     this.clearAttachments();
     this.restartSessionReplayCollector();
     this.showFormView();
@@ -361,6 +365,10 @@ export class Panel {
         <div class="bd-success__title">${this.t.successTitle}</div>
         <div class="bd-success__subtitle">${this.t.successSubtitle}</div>
       </div>
+      <div class="bd-success-actions" data-role="success-actions" style="display:none">
+        <button class="bd-success-action-btn" data-action="success-close">${this.t.closeButton}</button>
+        <button class="bd-success-action-btn bd-success-action-btn--primary" data-action="success-new">${this.t.submitAnother}</button>
+      </div>
       <div class="bd-panel__footer">
         <div class="bd-footer__links">
           <a class="bd-branding" data-role="branding" href="https://bugdump.com?ref=widget" target="_blank" rel="noopener">Powered by Bugdump</a>
@@ -389,6 +397,9 @@ export class Panel {
       taskInput: q<HTMLInputElement>('[data-role="task-id"]'),
       body: q<HTMLDivElement>('[data-role="body"]'),
       successView: q<HTMLDivElement>('[data-role="success"]'),
+      successActions: q<HTMLDivElement>('[data-role="success-actions"]'),
+      successCloseBtn: q<HTMLButtonElement>('[data-action="success-close"]'),
+      successNewBtn: q<HTMLButtonElement>('[data-action="success-new"]'),
       recordingBar: q<HTMLDivElement>('[data-role="recording-bar"]'),
       recordingBarTimer: q<HTMLSpanElement>('[data-role="recording-bar-timer"]'),
       recordingBarCanvas: q<HTMLCanvasElement>('[data-role="recording-bar-canvas"]'),
@@ -416,6 +427,9 @@ export class Panel {
     this.elements.fileInput.addEventListener('change', () => this.handleFileSelect());
     this.elements.reporterToggle.addEventListener('click', () => this.toggleReporter());
     this.elements.taskToggle.addEventListener('click', () => this.toggleTaskFields());
+
+    this.elements.successCloseBtn.addEventListener('click', () => this.handleClose());
+    this.elements.successNewBtn.addEventListener('click', () => this.reset());
 
     this.elements.recordingBarStart.addEventListener('click', () => this.startRecording());
     this.elements.recordingBarStop.addEventListener('click', () => this.stopRecording());
@@ -1342,6 +1356,7 @@ export class Panel {
     this.showingSuccess = true;
     this.elements.body.style.display = 'none';
     this.elements.successView.style.display = 'flex';
+    this.elements.successActions.style.display = 'flex';
     const footer = this.elements.root.querySelector<HTMLDivElement>('.bd-panel__footer')!;
     footer.style.display = 'none';
 
@@ -1382,6 +1397,7 @@ export class Panel {
     this.showingSuccess = false;
     this.elements.body.style.display = 'flex';
     this.elements.successView.style.display = 'none';
+    this.elements.successActions.style.display = 'none';
     const footer = this.elements.root.querySelector<HTMLDivElement>('.bd-panel__footer')!;
     footer.style.display = 'flex';
   }

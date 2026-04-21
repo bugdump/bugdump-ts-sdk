@@ -45,6 +45,8 @@ export interface BugdumpTranslations {
   badgeVoiceNote?: string;
   copyLink?: string;
   copied?: string;
+  closeButton?: string;
+  submitAnother?: string;
 }
 
 export type BugdumpIcon = 'bug' | 'chat' | 'feedback' | 'lightning';
@@ -107,7 +109,6 @@ export interface BugdumpUserContext {
 
 export interface ReportPayload {
   taskId?: number;
-  title?: string;
   description: string;
   priority?: 'low' | 'medium' | 'high' | 'critical';
   reporterName?: string;
