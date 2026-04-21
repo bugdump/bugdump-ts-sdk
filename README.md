@@ -72,6 +72,7 @@ const bugdump = Bugdump.init({
     screenRecordingMethod: 'dom',         // 'dom' (rrweb) or 'screen-capture' (getDisplayMedia)
     sessionReplay: true,                  // Session replay collection
     attachments: true,                    // File attachments
+    allowTaskAttach: false,               // Show "Attach to task" toggle
   },
 });
 ```
@@ -98,6 +99,7 @@ const bugdump = Bugdump.init({
 | `features.screenRecordingMethod` | `'dom'` | `'dom'` uses rrweb (no prompt, DOM-based). `'screen-capture'` uses getDisplayMedia (pixel-perfect, shows permission dialog) |
 | `features.sessionReplay` | `true` | Background session replay collection |
 | `features.attachments` | `true` | File attachment button |
+| `features.allowTaskAttach` | `false` | Show an "Attach to task" toggle so reporters can associate the report with an existing task by its public ID |
 
 #### Translations
 
@@ -127,7 +129,10 @@ const bugdump = Bugdump.init({
 | `reporterToggle` | `Reporter info` | Reporter section toggle label |
 | `namePlaceholder` | `Your name` | Name input placeholder |
 | `emailPlaceholder` | `Your email` | Email input placeholder |
+| `taskAttachToggle` | `Attach to task` | Label for the toggle that reveals the task ID field (shown when `allowTaskAttach` is enabled) |
+| `taskIdPlaceholder` | `Task ID` | Placeholder for the task ID input (shown when `allowTaskAttach` is enabled) |
 | `capturing` | `Capturing...` | Screenshot loading state |
+| `startRecording` | `Record` | Start recording button label in the recording bar |
 | `stop` | `Stop` | Recording stop button label |
 | `sending` | `Sending...` | Submit loading state |
 | `successTitle` | `Feedback sent!` | Success message title |
@@ -141,6 +146,10 @@ const bugdump = Bugdump.init({
 | `undo` | `Undo` | Annotation undo button tooltip |
 | `cancel` | `Cancel` | Annotation cancel button label |
 | `done` | `Done` | Annotation confirm button label |
+| `badgeScreenshot` | `Screenshot` | Badge label shown on screenshot attachments |
+| `badgeRecording` | `Recording` | Badge label shown on screen recording attachments |
+| `badgeReplay` | `Replay` | Badge label shown on session replay attachments |
+| `badgeVoiceNote` | `Voice note` | Badge label shown on voice note attachments |
 | `copyLink` | `Copy link` | Copy report link button label (shown when `showReportLink` is enabled) |
 | `copied` | `Copied!` | Feedback text after copying the report link |
 
@@ -211,6 +220,7 @@ Use `data-*` attributes to configure the widget. All attributes are optional exc
   data-screen-recording-method="dom"
   data-session-replay="true"
   data-attachments="true"
+  data-allow-task-attach="false"
   data-translations='{"title":"Report a bug","sendButton":"Send report"}'
 ></script>
 ```
@@ -230,6 +240,7 @@ Use `data-*` attributes to configure the widget. All attributes are optional exc
 | `data-screen-recording-method` | `features.screenRecordingMethod` | `dom` | `dom` (rrweb) or `screen-capture` (getDisplayMedia) |
 | `data-session-replay` | `features.sessionReplay` | `true` | Background session replay collection |
 | `data-attachments` | `features.attachments` | `true` | File attachment button |
+| `data-allow-task-attach` | `features.allowTaskAttach` | `false` | Show "Attach to task" toggle in the widget |
 | `data-translations` | `translations` | — | JSON string with translation overrides |
 | `data-console-filter` | `consoleFilter` | — | JSON object with `levels` / `exclude` arrays (strings only) |
 | `data-network-filter` | `networkFilter` | — | JSON object with `excludeUrls` / `includeUrls` / `excludeMethods` arrays (strings only) |
@@ -310,6 +321,50 @@ The link points to your project dashboard (e.g. `https://app.bugdump.com/project
 When the **Public Portal** is enabled for your project (via Project Settings → Public Portal), the widget footer automatically shows a **"View reports"** link that opens your project's public portal in a new tab.
 
 This requires no SDK configuration — the portal URL is fetched automatically from the server when the widget initializes. Enable or disable the portal at any time from your Bugdump dashboard; the widget picks up the change on next page load.
+
+## Attach Reports to an Existing Task
+
+By default, every submitted report creates a new task on the Bugdump side. If your users are already looking at a specific task (e.g. a kanban card, an issue page, a deep link from email) and you want follow-up reports to land on that same task instead of spawning new ones, enable `allowTaskAttach`.
+
+Turn the feature on, and the widget renders an extra **"Attach to task"** toggle in the form. When the reporter expands it and enters a task's **public ID**, the submitted report is associated with that existing task instead of creating a new one.
+
+### npm
+
+```typescript
+const bugdump = Bugdump.init({
+  apiKey: 'your-api-key',
+  features: {
+    allowTaskAttach: true,
+  },
+});
+```
+
+### Script Tag
+
+```html
+<script src="https://bugdump.com/sdk/latest.js" data-api-key="your-api-key" data-allow-task-attach="true"></script>
+```
+
+### Pre-filling the Task ID Programmatically
+
+If you already know which task the report should attach to (for example, the widget is opened from a "Report a problem with this task" button on a task detail page), pre-fill the task ID and skip asking the reporter:
+
+```typescript
+// Open the widget and pre-fill the task ID in one call
+bugdump.open({ taskId: 42 });
+
+// Or set it ahead of time and open later
+bugdump.identifyTask(42);
+bugdump.open();
+
+// Clear a previously set task ID
+bugdump.clearTask();
+
+// Read the currently attached task ID
+const activeTaskId = bugdump.getActiveTaskId(); // number | null
+```
+
+The `allowTaskAttach` feature must still be enabled for the server to accept the task association — setting a task ID programmatically without enabling the feature has no effect on the submitted report.
 
 ## Headless Mode (No Floating Button)
 
@@ -486,8 +541,9 @@ bugdump.setContext({
 ## Programmatic Control
 
 ```typescript
-// Open the report panel
+// Open the report panel (optionally pre-attaching to an existing task)
 bugdump.open();
+bugdump.open({ taskId: 42 });
 
 // Close the report panel
 bugdump.close();
@@ -506,6 +562,18 @@ bugdump.getUser();
 
 // Get the custom context
 bugdump.getContext();
+
+// Get the internal HTTP client (for submitReport / upload helpers)
+bugdump.getHttpClient();
+
+// Attach subsequent reports to an existing task by its public ID
+bugdump.identifyTask(42);
+
+// Stop attaching to a task — new reports will create new tasks again
+bugdump.clearTask();
+
+// Read the currently attached task ID, if any
+bugdump.getActiveTaskId();
 
 // Clear user identity and custom context (e.g., on logout)
 bugdump.reset();
