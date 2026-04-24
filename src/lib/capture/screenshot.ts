@@ -44,6 +44,47 @@ export interface ScreenshotResult {
   height: number;
 }
 
+function replaceFormFieldsWithStaticText(doc: Document): void {
+  const liveDoc = document;
+  const liveFields = Array.from(
+    liveDoc.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>('input, textarea'),
+  );
+  const clonedFields = Array.from(
+    doc.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>('input, textarea'),
+  );
+
+  if (liveFields.length !== clonedFields.length) return;
+
+  for (let i = 0; i < clonedFields.length; i++) {
+    const cloned = clonedFields[i]!;
+    const live = liveFields[i]!;
+    const tag = cloned.tagName.toLowerCase();
+    const value = live.value ?? '';
+
+    if (tag === 'input') {
+      const inputEl = cloned as HTMLInputElement;
+      const type = (inputEl.getAttribute('type') ?? 'text').toLowerCase();
+      if (type === 'checkbox' || type === 'radio' || type === 'file' || type === 'hidden' || type === 'range' || type === 'color') {
+        continue;
+      }
+      inputEl.setAttribute('value', type === 'password' ? '•'.repeat(value.length) : value);
+      continue;
+    }
+
+    const replacement = doc.createElement('div');
+    const computed = liveDoc.defaultView?.getComputedStyle(live);
+    if (computed) {
+      replacement.style.cssText = computed.cssText;
+    }
+    replacement.style.whiteSpace = 'pre-wrap';
+    replacement.style.overflow = 'hidden';
+    replacement.style.wordBreak = 'break-word';
+    replacement.style.boxSizing = computed?.boxSizing ?? 'border-box';
+    replacement.textContent = value;
+    cloned.replaceWith(replacement);
+  }
+}
+
 export async function captureScreenshot(
   options: ScreenshotOptions = {},
 ): Promise<ScreenshotResult> {
@@ -67,6 +108,9 @@ export async function captureScreenshot(
     ignoreElements: (element: Element) => {
       if (filter && element instanceof HTMLElement && !filter(element)) return true;
       return false;
+    },
+    onclone: (clonedDoc) => {
+      replaceFormFieldsWithStaticText(clonedDoc);
     },
   });
 
