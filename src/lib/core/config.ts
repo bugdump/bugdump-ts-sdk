@@ -34,6 +34,7 @@ export const DEFAULT_TRANSLATIONS: Required<BugdumpTranslations> = {
   successTitle: 'Feedback sent!',
   successSubtitle: 'Thank you for your feedback.',
   errorMessage: 'Something went wrong. Please try again.',
+  recordingEmptyError: 'Recording was empty. Please try again and keep the tab visible while recording.',
   arrowTool: 'Arrow',
   rectangleTool: 'Rectangle',
   drawTool: 'Draw',
