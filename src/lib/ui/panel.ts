@@ -783,18 +783,13 @@ export class Panel {
       source.connect(this.audioDestination);
     }
 
-    // Keep a silent constant source connected so the destination always emits
-    // samples. Without this, an empty MediaStreamAudioDestinationNode produces
-    // a stalled audio track, which causes MediaRecorder in Chromium to emit
-    // zero bytes when the user denies tab audio and never enables the mic.
-    const silentSource = this.audioContext.createConstantSource();
-    silentSource.offset.value = 0;
-    silentSource.connect(this.audioDestination);
-    silentSource.start();
-
     const videoTrack = videoTracks[0]!;
-    const mixedAudioTrack = this.audioDestination.stream.getAudioTracks()[0]!;
-    const recordStream = new MediaStream([videoTrack, mixedAudioTrack]);
+    const tracks: MediaStreamTrack[] = [videoTrack];
+    if (audioTracks.length > 0) {
+      const mixedAudioTrack = this.audioDestination.stream.getAudioTracks()[0]!;
+      tracks.push(mixedAudioTrack);
+    }
+    const recordStream = new MediaStream(tracks);
 
     const mimeType = getSupportedMimeType();
 
@@ -818,14 +813,8 @@ export class Panel {
 
     this.mediaRecorder.onstop = () => {
       const blob = new Blob(this.recordedChunks, { type: this.mediaRecorder?.mimeType || 'video/webm' });
-      const recordingEndedAt = Date.now();
-      if (blob.size === 0) {
-        this.showError(this.t.recordingEmptyError);
-        this.cleanupMediaStream();
-        this.setRecordingState(false);
-        return;
-      }
       const thumbnailUrl = URL.createObjectURL(blob);
+      const recordingEndedAt = Date.now();
       this.addAttachment({
         id: generateAttachmentId(),
         type: 'recording',

@@ -31,7 +31,6 @@ export interface BugdumpTranslations {
   successTitle?: string;
   successSubtitle?: string;
   errorMessage?: string;
-  recordingEmptyError?: string;
   arrowTool?: string;
   rectangleTool?: string;
   drawTool?: string;
