@@ -19,6 +19,7 @@ import {
   checkIcon,
   replayIcon,
   micIcon,
+  mascotIcon,
 } from './icons';
 import { captureScreenshot, captureScreenshotNative } from '../capture/screenshot';
 import { AnnotationOverlay, renderOperationsToCanvas } from '../capture/annotation';
@@ -30,6 +31,7 @@ import { getAnnotationStyles } from './panel-annotation-styles';
 import { delay, loadImage, formatDuration, getSupportedMimeType } from './panel-utils';
 import {
   MAX_ATTACHMENTS,
+  MAX_DESCRIPTION_LENGTH,
   DEFAULT_MAX_MEDIA_SIZE,
   RECORDING_TIMESLICE_MS,
   MAX_RECORDING_DURATION_S,
@@ -278,9 +280,22 @@ export class Panel {
     el.style.height = `${el.scrollHeight}px`;
   }
 
+  private updateCharCounter(): void {
+    const length = this.elements.textarea.value.length;
+    const counter = this.elements.charCounter;
+    if (length === 0) {
+      counter.style.display = 'none';
+      return;
+    }
+    counter.style.display = '';
+    counter.textContent = `${length} / ${MAX_DESCRIPTION_LENGTH}`;
+    counter.classList.toggle('bd-char-counter--limit', length >= MAX_DESCRIPTION_LENGTH);
+  }
+
   reset(): void {
     this.elements.textarea.value = '';
     this.elements.textarea.style.height = '';
+    this.updateCharCounter();
     this.elements.nameInput.value = '';
     this.elements.emailInput.value = '';
     this.elements.taskInput.value = '';
@@ -319,14 +334,18 @@ export class Panel {
 
     root.innerHTML = `
       <div class="bd-panel__header">
-        <span class="bd-panel__title">${this.t.title}</span>
+        <div class="bd-panel__heading">
+          <span class="bd-panel__mascot">${mascotIcon(28)}</span>
+          <span class="bd-panel__title">${this.t.title}</span>
+        </div>
         <div class="bd-panel__header-actions">
           <button class="bd-panel__minimize" aria-label="Minimize">${minimizeIcon()}</button>
           <button class="bd-panel__close" aria-label="Close">${closeIcon()}</button>
         </div>
       </div>
       <div class="bd-panel__body" data-role="body">
-        <textarea class="bd-textarea" placeholder="${this.t.descriptionPlaceholder}" rows="2"></textarea>
+        <textarea class="bd-textarea" placeholder="${this.t.descriptionPlaceholder}" rows="2" maxlength="${MAX_DESCRIPTION_LENGTH}"></textarea>
+        <span class="bd-char-counter" data-role="char-counter" style="display:none">0 / ${MAX_DESCRIPTION_LENGTH}</span>
         <div class="bd-action-bar">
           <button class="bd-action-btn" data-action="attach">${paperclipIcon()} ${this.t.attachButton}</button>
           <button class="bd-action-btn" data-action="screenshot">${cameraIcon()} ${this.t.screenshotButton}</button>
@@ -382,6 +401,7 @@ export class Panel {
     const elements: PanelElements = {
       root,
       textarea: q<HTMLTextAreaElement>('.bd-textarea'),
+      charCounter: q<HTMLSpanElement>('[data-role="char-counter"]'),
       nameInput: q<HTMLInputElement>('[data-role="name"]'),
       emailInput: q<HTMLInputElement>('[data-role="email"]'),
       sendBtn: q<HTMLButtonElement>('[data-action="send"]'),
@@ -439,6 +459,21 @@ export class Panel {
 
     this.elements.textarea.addEventListener('input', () => {
       this.autoResizeTextarea();
+      this.updateCharCounter();
+    });
+
+    this.elements.textarea.addEventListener('keydown', (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+        e.preventDefault();
+        this.handleSubmit();
+      }
+    });
+
+    this.elements.root.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && !this.recording && !this.recordingArmed) {
+        e.preventDefault();
+        this.handleClose();
+      }
     });
 
     this.elements.attachmentsList.addEventListener('click', (e) => {
@@ -465,6 +500,7 @@ export class Panel {
   private async handleSubmit(): Promise<void> {
     const description = this.elements.textarea.value.trim();
     if (!description) {
+      this.showError(this.t.emptyDescriptionMessage);
       this.elements.textarea.focus();
       return;
     }

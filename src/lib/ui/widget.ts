@@ -1,5 +1,5 @@
 import { createStyles } from './styles';
-import { closeIcon, resolveIcon } from './icons';
+import { closeIcon, resolveIcon, bugIcon } from './icons';
 import { Panel } from './panel';
 import type { PanelSubmitData, PanelFeatures } from './panel';
 import type { BugdumpTheme, BugdumpTranslations, ReportResponse } from '../types';
@@ -27,7 +27,7 @@ export class Widget {
     style.textContent = createStyles();
     this.shadowRoot.appendChild(style);
 
-    this.triggerIconHtml = resolveIcon(options?.icon);
+    this.triggerIconHtml = options?.icon ? resolveIcon(options.icon) : bugIcon();
     this.triggerBtn = this.createTriggerButton(options?.translations?.title);
     if (options?.hideButton) {
       this.triggerBtn.style.display = 'none';

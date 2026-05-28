@@ -1,31 +1,33 @@
 export function getAnnotationStyles(): string {
   return `
     :host {
-      --bd-primary: #6366f1;
-      --bd-primary-hover: #4f46e5;
-      --bd-bg: #ffffff;
-      --bd-bg-secondary: #f9fafb;
-      --bd-bg-hover: #f3f4f6;
-      --bd-border: #e5e7eb;
-      --bd-text: #111827;
-      --bd-text-secondary: #6b7280;
-      --bd-danger: #ef4444;
-      --bd-shadow: rgba(0, 0, 0, 0.15);
-      --bd-shadow-light: rgba(0, 0, 0, 0.08);
-      --bd-error-bg: #fef2f2;
+      --bd-primary: #7c5cf0;
+      --bd-primary-hover: #6a48e0;
+      --bd-bg: #fffaf0;
+      --bd-bg-secondary: #fef9ee;
+      --bd-bg-hover: #f0eee9;
+      --bd-border: rgba(40, 20, 80, 0.14);
+      --bd-text: #1a0a3a;
+      --bd-text-secondary: #5a4a7a;
+      --bd-danger: #b1300f;
+      --bd-shadow: rgba(40, 20, 80, 0.18);
+      --bd-shadow-light: rgba(40, 20, 80, 0.08);
+      --bd-error-bg: #fdeee9;
     }
 
     @media (prefers-color-scheme: dark) {
       :host {
-        --bd-bg: #1a1a2e;
-        --bd-bg-secondary: #16162a;
-        --bd-bg-hover: #232340;
-        --bd-border: #2d2d50;
-        --bd-text: #e5e7eb;
-        --bd-text-secondary: #9ca3af;
-        --bd-shadow: rgba(0, 0, 0, 0.4);
-        --bd-shadow-light: rgba(0, 0, 0, 0.2);
-        --bd-error-bg: #2d1b1b;
+        --bd-primary: #a78bfa;
+        --bd-primary-hover: #b9a4fb;
+        --bd-bg: #221b35;
+        --bd-bg-secondary: #1a0a3a;
+        --bd-bg-hover: #2a2046;
+        --bd-border: rgba(232, 227, 245, 0.14);
+        --bd-text: #e8e3f5;
+        --bd-text-secondary: #9d8fb0;
+        --bd-shadow: rgba(0, 0, 0, 0.45);
+        --bd-shadow-light: rgba(0, 0, 0, 0.25);
+        --bd-error-bg: #3a1414;
       }
     }
 

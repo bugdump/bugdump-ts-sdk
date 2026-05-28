@@ -34,6 +34,7 @@ export const DEFAULT_TRANSLATIONS: Required<BugdumpTranslations> = {
   successTitle: 'Feedback sent!',
   successSubtitle: 'Thank you for your feedback.',
   errorMessage: 'Something went wrong. Please try again.',
+  emptyDescriptionMessage: 'Please describe what happened before sending.',
   arrowTool: 'Arrow',
   rectangleTool: 'Rectangle',
   drawTool: 'Draw',

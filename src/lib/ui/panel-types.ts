@@ -35,6 +35,7 @@ export interface PanelFeatures {
 export interface PanelElements {
   root: HTMLDivElement;
   textarea: HTMLTextAreaElement;
+  charCounter: HTMLSpanElement;
   nameInput: HTMLInputElement;
   emailInput: HTMLInputElement;
   sendBtn: HTMLButtonElement;
@@ -64,6 +65,7 @@ export interface PanelElements {
 }
 
 export const MAX_ATTACHMENTS = 10;
+export const MAX_DESCRIPTION_LENGTH = 2000;
 export const DEFAULT_MAX_MEDIA_SIZE = 50 * 1024 * 1024; // 50MB fallback
 export const RECORDING_TIMESLICE_MS = 1000;
 export const MAX_RECORDING_DURATION_S = 180; // 3 minutes

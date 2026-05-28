@@ -2,6 +2,31 @@ export function bugIcon(): string {
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2l1.88 1.88"/><path d="M14.12 3.88 16 2"/><path d="M9 7.13v-1a3.003 3.003 0 1 1 6 0v1"/><path d="M12 20c-3.3 0-6-2.7-6-6v-3a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v3c0 3.3-2.7 6-6 6"/><path d="M12 20v-9"/><path d="M6.53 9C4.6 8.8 3 7.1 3 5"/><path d="M6 13H2"/><path d="M3 21c0-2.1 1.7-3.9 3.8-4"/><path d="M20.97 5c0 2.1-1.6 3.8-3.5 4"/><path d="M22 13h-4"/><path d="M17.2 17c2.1.1 3.8 1.9 3.8 4"/></svg>`;
 }
 
+export function mascotIcon(size = 28): string {
+  const gradId = 'bd-mascot-body';
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 64 64" fill="none" aria-hidden="true">
+    <defs>
+      <radialGradient id="${gradId}" cx="0.35" cy="0.3" r="0.8">
+        <stop offset="0" stop-color="#a78bfa" stop-opacity="0.65"/>
+        <stop offset="1" stop-color="#6f4ad6" stop-opacity="0"/>
+      </radialGradient>
+    </defs>
+    <path d="M22 18 C 19 11, 16 8, 13 7" stroke="#3a1f6b" stroke-width="2.2" stroke-linecap="round" fill="none"/>
+    <path d="M42 18 C 45 11, 48 8, 51 7" stroke="#3a1f6b" stroke-width="2.2" stroke-linecap="round" fill="none"/>
+    <circle cx="12.5" cy="6.5" r="2.2" fill="#ffd13a"/>
+    <circle cx="51.5" cy="6.5" r="2.2" fill="#ffd13a"/>
+    <ellipse cx="32" cy="36" rx="22" ry="22" fill="#6f4ad6"/>
+    <ellipse cx="32" cy="36" rx="22" ry="22" fill="url(#${gradId})"/>
+    <ellipse cx="18" cy="42" rx="4" ry="2.5" fill="#ff7aa2" opacity="0.55"/>
+    <ellipse cx="46" cy="42" rx="4" ry="2.5" fill="#ff7aa2" opacity="0.55"/>
+    <ellipse cx="25" cy="34" rx="3.2" ry="4" fill="#1a0a3a"/>
+    <circle cx="26" cy="33" r="1.1" fill="#fff"/>
+    <ellipse cx="39" cy="34" rx="3.2" ry="4" fill="#1a0a3a"/>
+    <circle cx="40" cy="33" r="1.1" fill="#fff"/>
+    <path d="M27 44 q5 4 10 0" stroke="#1a0a3a" stroke-width="2.2" stroke-linecap="round" fill="none"/>
+  </svg>`;
+}
+
 export function chatIcon(): string {
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22z"/></svg>`;
 }

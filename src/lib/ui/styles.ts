@@ -7,55 +7,70 @@ export function createStyles(): string {
     }
 
     :host {
-      --bd-primary: #6366f1;
-      --bd-primary-hover: #4f46e5;
+      --bd-primary: #7c5cf0;
+      --bd-primary-hover: #6a48e0;
       --bd-primary-text: #ffffff;
-      --bd-bg: #ffffff;
-      --bd-bg-secondary: #f9fafb;
-      --bd-bg-hover: #f3f4f6;
-      --bd-border: #e5e7eb;
-      --bd-border-focus: #6366f1;
-      --bd-text: #111827;
-      --bd-text-secondary: #6b7280;
-      --bd-text-muted: #9ca3af;
-      --bd-danger: #ef4444;
-      --bd-danger-hover: #dc2626;
-      --bd-shadow: rgba(0, 0, 0, 0.15);
-      --bd-shadow-light: rgba(0, 0, 0, 0.08);
-      --bd-error-bg: #fef2f2;
-      --bd-error-text: #dc2626;
-      --bd-error-border: #fecaca;
+      --bd-bg: #fffaf0;
+      --bd-bg-secondary: #fef9ee;
+      --bd-bg-hover: #f0eee9;
+      --bd-border: rgba(40, 20, 80, 0.14);
+      --bd-border-dashed: rgba(40, 20, 80, 0.22);
+      --bd-border-focus: #7c5cf0;
+      --bd-text: #1a0a3a;
+      --bd-text-secondary: #5a4a7a;
+      --bd-text-muted: #9d8fb0;
+      --bd-danger: #b1300f;
+      --bd-danger-hover: #8f2509;
+      --bd-shadow: rgba(40, 20, 80, 0.18);
+      --bd-shadow-light: rgba(40, 20, 80, 0.08);
+      --bd-error-bg: #fdeee9;
+      --bd-error-text: #b1300f;
+      --bd-error-border: rgba(177, 48, 15, 0.3);
+      --bd-mint: #bbf3d3;
+      --bd-lavender: #d8c9ff;
+      --bd-peach: #ffd3a8;
+      --bd-tone-text: #1a0a3a;
     }
 
     :host(.bd-theme-dark) {
-      --bd-bg: #1a1a2e;
-      --bd-bg-secondary: #16162a;
-      --bd-bg-hover: #232340;
-      --bd-border: #2d2d50;
-      --bd-text: #e5e7eb;
-      --bd-text-secondary: #9ca3af;
-      --bd-text-muted: #6b7280;
-      --bd-shadow: rgba(0, 0, 0, 0.4);
-      --bd-shadow-light: rgba(0, 0, 0, 0.2);
-      --bd-error-bg: #2d1b1b;
-      --bd-error-text: #f87171;
-      --bd-error-border: #5c2020;
+      --bd-primary: #a78bfa;
+      --bd-primary-hover: #b9a4fb;
+      --bd-primary-text: #1a0a3a;
+      --bd-bg: #221b35;
+      --bd-bg-secondary: #1a0a3a;
+      --bd-bg-hover: #2a2046;
+      --bd-border: rgba(232, 227, 245, 0.14);
+      --bd-border-dashed: rgba(232, 227, 245, 0.22);
+      --bd-border-focus: #a78bfa;
+      --bd-text: #e8e3f5;
+      --bd-text-secondary: #9d8fb0;
+      --bd-text-muted: #6b5e85;
+      --bd-shadow: rgba(0, 0, 0, 0.45);
+      --bd-shadow-light: rgba(0, 0, 0, 0.25);
+      --bd-error-bg: #3a1414;
+      --bd-error-text: #ff7a6b;
+      --bd-error-border: rgba(255, 122, 107, 0.3);
     }
 
     @media (prefers-color-scheme: dark) {
       :host(.bd-theme-auto) {
-        --bd-bg: #1a1a2e;
-        --bd-bg-secondary: #16162a;
-        --bd-bg-hover: #232340;
-        --bd-border: #2d2d50;
-        --bd-text: #e5e7eb;
-        --bd-text-secondary: #9ca3af;
-        --bd-text-muted: #6b7280;
-        --bd-shadow: rgba(0, 0, 0, 0.4);
-        --bd-shadow-light: rgba(0, 0, 0, 0.2);
-        --bd-error-bg: #2d1b1b;
-        --bd-error-text: #f87171;
-        --bd-error-border: #5c2020;
+        --bd-primary: #a78bfa;
+        --bd-primary-hover: #b9a4fb;
+        --bd-primary-text: #1a0a3a;
+        --bd-bg: #221b35;
+        --bd-bg-secondary: #1a0a3a;
+        --bd-bg-hover: #2a2046;
+        --bd-border: rgba(232, 227, 245, 0.14);
+        --bd-border-dashed: rgba(232, 227, 245, 0.22);
+        --bd-border-focus: #a78bfa;
+        --bd-text: #e8e3f5;
+        --bd-text-secondary: #9d8fb0;
+        --bd-text-muted: #6b5e85;
+        --bd-shadow: rgba(0, 0, 0, 0.45);
+        --bd-shadow-light: rgba(0, 0, 0, 0.25);
+        --bd-error-bg: #3a1414;
+        --bd-error-text: #ff7a6b;
+        --bd-error-border: rgba(255, 122, 107, 0.3);
       }
     }
 
@@ -124,8 +139,9 @@ export function createStyles(): string {
       width: 380px;
       max-height: calc(100vh - 120px);
       background: var(--bd-bg);
-      border-radius: 16px;
-      box-shadow: 0 8px 32px var(--bd-shadow), 0 2px 8px var(--bd-shadow-light);
+      border: 1px solid var(--bd-border);
+      border-radius: 18px;
+      box-shadow: 0 16px 40px var(--bd-shadow), 0 2px 8px var(--bd-shadow-light);
       display: flex;
       flex-direction: column;
       overflow: hidden;
@@ -150,15 +166,40 @@ export function createStyles(): string {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 16px 20px;
-      border-bottom: 1px solid var(--bd-border);
+      padding: 14px 18px;
+      border-bottom: 1px dashed var(--bd-border-dashed);
       background: var(--bd-bg-secondary);
+    }
+
+    .bd-panel__heading {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      min-width: 0;
+    }
+
+    .bd-panel__mascot {
+      width: 28px;
+      height: 28px;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .bd-panel__mascot svg {
+      width: 28px;
+      height: 28px;
     }
 
     .bd-panel__title {
       font-size: 16px;
-      font-weight: 600;
+      font-weight: 700;
+      letter-spacing: -0.01em;
       color: var(--bd-text);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
     .bd-panel__header-actions {
@@ -204,20 +245,20 @@ export function createStyles(): string {
 
     .bd-textarea {
       width: 100%;
-      min-height: 52px;
+      min-height: 56px;
       max-height: 160px;
-      padding: 10px 12px;
-      border: 1px solid var(--bd-border);
-      border-radius: 8px;
+      padding: 11px 13px;
+      border: 1.5px dashed var(--bd-border-dashed);
+      border-radius: 12px;
       resize: none;
       overflow-y: auto;
       font-family: inherit;
       font-size: 14px;
       line-height: 1.5;
       color: var(--bd-text);
-      background: var(--bd-bg);
+      background: var(--bd-bg-secondary);
       outline: none;
-      transition: border-color 0.15s;
+      transition: border-color 0.15s, box-shadow 0.15s;
     }
 
     .bd-textarea::placeholder {
@@ -226,11 +267,25 @@ export function createStyles(): string {
 
     .bd-textarea:focus {
       border-color: var(--bd-border-focus);
+      border-style: solid;
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--bd-primary) 18%, transparent);
+    }
+
+    .bd-char-counter {
+      align-self: flex-end;
+      margin-top: -6px;
+      font-size: 11px;
+      color: var(--bd-text-muted);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .bd-char-counter--limit {
+      color: var(--bd-danger);
     }
 
     .bd-action-bar {
       display: flex;
-      gap: 4px;
+      gap: 7px;
       flex-wrap: wrap;
     }
 
@@ -238,21 +293,37 @@ export function createStyles(): string {
       display: inline-flex;
       align-items: center;
       gap: 6px;
-      padding: 6px 10px;
-      border: 1px solid var(--bd-border);
-      border-radius: 6px;
-      background: var(--bd-bg);
-      color: var(--bd-text-secondary);
+      padding: 7px 12px;
+      border: 1.5px dashed transparent;
+      border-radius: 999px;
+      background: var(--bd-bg-hover);
+      color: var(--bd-tone-text);
       font-size: 13px;
+      font-weight: 600;
       font-family: inherit;
       cursor: pointer;
-      transition: color 0.15s, border-color 0.15s, background-color 0.15s;
+      transition: filter 0.15s, transform 0.1s, box-shadow 0.15s;
+    }
+
+    .bd-action-btn[data-action="attach"] {
+      background: var(--bd-lavender);
+    }
+
+    .bd-action-btn[data-action="screenshot"] {
+      background: var(--bd-mint);
+    }
+
+    .bd-action-btn[data-action="record"] {
+      background: var(--bd-peach);
     }
 
     .bd-action-btn:hover {
-      color: var(--bd-text);
-      border-color: var(--bd-text-secondary);
-      background: var(--bd-bg-secondary);
+      filter: brightness(0.96);
+      box-shadow: 0 2px 6px var(--bd-shadow-light);
+    }
+
+    .bd-action-btn:active {
+      transform: translateY(1px);
     }
 
     .bd-action-btn:disabled {
@@ -417,15 +488,15 @@ export function createStyles(): string {
 
     .bd-input {
       width: 100%;
-      padding: 8px 12px;
-      border: 1px solid var(--bd-border);
-      border-radius: 8px;
+      padding: 9px 12px;
+      border: 1.5px dashed var(--bd-border-dashed);
+      border-radius: 10px;
       font-family: inherit;
       font-size: 14px;
       color: var(--bd-text);
-      background: var(--bd-bg);
+      background: var(--bd-bg-secondary);
       outline: none;
-      transition: border-color 0.15s;
+      transition: border-color 0.15s, box-shadow 0.15s;
     }
 
     .bd-input::placeholder {
@@ -434,11 +505,13 @@ export function createStyles(): string {
 
     .bd-input:focus {
       border-color: var(--bd-border-focus);
+      border-style: solid;
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--bd-primary) 18%, transparent);
     }
 
     .bd-panel__footer {
       padding: 12px 20px;
-      border-top: 1px solid var(--bd-border);
+      border-top: 1px dashed var(--bd-border-dashed);
       display: flex;
       align-items: center;
       gap: 12px;
@@ -467,20 +540,25 @@ export function createStyles(): string {
       display: inline-flex;
       align-items: center;
       gap: 6px;
-      padding: 8px 20px;
+      padding: 9px 20px;
       background: var(--bd-primary);
       color: var(--bd-primary-text);
       border: none;
-      border-radius: 8px;
+      border-radius: 999px;
       font-size: 14px;
-      font-weight: 500;
+      font-weight: 600;
       font-family: inherit;
       cursor: pointer;
-      transition: background-color 0.15s, opacity 0.15s;
+      box-shadow: 0 4px 12px color-mix(in srgb, var(--bd-primary) 30%, transparent);
+      transition: background-color 0.15s, opacity 0.15s, transform 0.1s;
     }
 
     .bd-send-btn:hover {
       background: var(--bd-primary-hover);
+    }
+
+    .bd-send-btn:active {
+      transform: translateY(1px);
     }
 
     .bd-send-btn:disabled {
@@ -506,7 +584,7 @@ export function createStyles(): string {
     .bd-success svg {
       width: 48px;
       height: 48px;
-      color: #22c55e;
+      color: #1f8a5b;
     }
 
     .bd-success__title {
@@ -554,12 +632,12 @@ export function createStyles(): string {
     }
 
     .bd-success__copy-btn:hover {
-      background: var(--bd-hover);
+      background: var(--bd-bg-hover);
     }
 
     .bd-success-actions {
       padding: 12px 20px;
-      border-top: 1px solid var(--bd-border);
+      border-top: 1px dashed var(--bd-border-dashed);
       display: flex;
       align-items: center;
       justify-content: flex-end;
@@ -572,10 +650,10 @@ export function createStyles(): string {
       gap: 6px;
       padding: 8px 16px;
       font-size: 14px;
-      font-weight: 500;
+      font-weight: 600;
       font-family: inherit;
-      border: 1px solid var(--bd-border);
-      border-radius: 8px;
+      border: 1.5px dashed var(--bd-border-dashed);
+      border-radius: 999px;
       background: var(--bd-bg);
       color: var(--bd-text);
       cursor: pointer;
@@ -583,7 +661,7 @@ export function createStyles(): string {
     }
 
     .bd-success-action-btn:hover {
-      background: var(--bd-hover);
+      background: var(--bd-bg-hover);
     }
 
     .bd-success-action-btn--primary {
