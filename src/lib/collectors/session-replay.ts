@@ -25,7 +25,7 @@ export class SessionReplayCollector {
       },
       checkoutEveryNms: CHECKOUT_INTERVAL_MS,
       inlineStylesheet: true,
-      inlineImages: true,
+      inlineImages: false,
       collectFonts: true,
       sampling: {
         mousemove: 50,
@@ -221,4 +221,46 @@ export class SessionReplayCollector {
     }
     return -1;
   }
+}
+
+/**
+ * Find the start indices of replayable segments — each is a META event (or the
+ * FULL_SNAPSHOT directly) that begins a self-contained playback window. The
+ * earliest one carries the most context; later ones are smaller, dropping the
+ * oldest part of the session.
+ */
+function snapshotStarts(events: eventWithTime[]): number[] {
+  const starts: number[] = [];
+  for (let i = 0; i < events.length; i++) {
+    if (events[i]?.type !== FULL_SNAPSHOT_EVENT) continue;
+    starts.push(i > 0 && events[i - 1]?.type === META_EVENT ? i - 1 : i);
+  }
+  return starts;
+}
+
+/**
+ * Trim a replay event slice down to the largest most-recent snapshot window
+ * whose serialized size is within `maxBytes`. Returns the original slice when it
+ * already fits, or an empty array if even the last snapshot alone is too large.
+ * `sizeOf` receives a candidate slice and returns its serialized byte size, so
+ * the caller decides the wire format (e.g. packed JSON).
+ */
+export function trimReplayToBudget(
+  events: eventWithTime[],
+  maxBytes: number,
+  sizeOf: (slice: eventWithTime[]) => number,
+): eventWithTime[] {
+  if (events.length === 0) return events;
+  if (sizeOf(events) <= maxBytes) return events;
+
+  const starts = snapshotStarts(events);
+  // Walk from the earliest snapshot start to the latest; the first candidate
+  // that fits keeps the most history while staying under budget.
+  for (const start of starts) {
+    if (start === 0) continue;
+    const slice = events.slice(start);
+    if (sizeOf(slice) <= maxBytes) return slice;
+  }
+
+  return [];
 }

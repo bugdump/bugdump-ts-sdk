@@ -28,6 +28,8 @@ import type { TextOperation } from '../capture/annotation';
 import { DEFAULT_TRANSLATIONS } from '../core/config';
 import type { BugdumpTranslations, CaptureMethod, ReportResponse, UserAction } from '../types';
 import type { SessionReplayCollector } from '../collectors/session-replay';
+import { trimReplayToBudget } from '../collectors/session-replay';
+import { serializeReplay, packedReplaySize } from '../collectors/replay-serializer';
 import { deriveActions, deriveActionsInWindow } from '../collectors/derive-actions';
 import { getAnnotationStyles } from './panel-annotation-styles';
 import { delay, loadImage, formatDuration, getSupportedMimeType } from './panel-utils';
@@ -201,23 +203,32 @@ export class Panel {
     this.sessionReplayCollector.stop();
 
     this.sessionReplayAttached = true;
+    // Derive actions from the full window first so the Actions list survives even
+    // if the replay blob is trimmed (or dropped entirely) for size below.
     this.derivedActions = deriveActions(events);
 
-    if (events.length === 0) return;
+    if (events.length === 0) {
+      this.sessionReplayCollector.start();
+      return;
+    }
 
-    const durationMs = events.length >= 2
-      ? events[events.length - 1]!.timestamp - events[0]!.timestamp
-      : 0;
-    const durationS = Math.round(durationMs / 1000);
+    const fitted = trimReplayToBudget(events, this.maxMediaSize, packedReplaySize);
+    if (fitted.length > 0) {
+      const durationMs = fitted.length >= 2
+        ? fitted[fitted.length - 1]!.timestamp - fitted[0]!.timestamp
+        : 0;
+      const durationS = Math.round(durationMs / 1000);
 
-    const blob = new Blob([JSON.stringify(events)], { type: 'application/json' });
-    this.addAttachment({
-      id: generateAttachmentId(),
-      type: 'session_replay',
-      blob,
-      name: `session-replay-${Date.now()}.json`,
-      durationSeconds: durationS,
-    });
+      this.addAttachment({
+        id: generateAttachmentId(),
+        type: 'session_replay',
+        blob: serializeReplay(fitted),
+        name: `session-replay-${Date.now()}.json`,
+        durationSeconds: durationS,
+      });
+    } else {
+      console.warn('[Bugdump] Session replay dropped: exceeds max size even after trimming. Actions list still attached.');
+    }
 
     this.sessionReplayCollector.start();
   }
@@ -1073,24 +1084,29 @@ export class Panel {
     const recordingEvents = this.sessionReplayCollector.stopRecording();
 
     if (recordingEvents.length > 0) {
-      const firstTs = recordingEvents[0]!.timestamp;
-      const lastTs = recordingEvents[recordingEvents.length - 1]!.timestamp;
-      const blob = new Blob([JSON.stringify(recordingEvents)], { type: 'application/json' });
-      this.addAttachment({
-        id: generateAttachmentId(),
-        type: 'recording',
-        blob,
-        name: `recording-${Date.now()}.json`,
-        metadata: {
-          recordingStartedAt: firstTs,
-          recordingEndedAt: lastTs,
-          durationMs: lastTs - firstTs,
-        },
-      });
-
       // Bind the Actions list to the recorded window so actions, video, and replay
       // all cover the same span (instead of the rolling window from when the panel opened).
+      // Derived before any size trimming so actions survive even if the replay is dropped.
       this.derivedActions = deriveActions(recordingEvents);
+
+      const fitted = trimReplayToBudget(recordingEvents, this.maxMediaSize, packedReplaySize);
+      if (fitted.length > 0) {
+        const firstTs = fitted[0]!.timestamp;
+        const lastTs = fitted[fitted.length - 1]!.timestamp;
+        this.addAttachment({
+          id: generateAttachmentId(),
+          type: 'recording',
+          blob: serializeReplay(fitted),
+          name: `recording-${Date.now()}.json`,
+          metadata: {
+            recordingStartedAt: firstTs,
+            recordingEndedAt: lastTs,
+            durationMs: lastTs - firstTs,
+          },
+        });
+      } else {
+        console.warn('[Bugdump] Recording replay dropped: exceeds max size even after trimming. Actions list still attached.');
+      }
     }
 
     this.setRecordingState(false);
@@ -1409,14 +1425,23 @@ export class Panel {
   setUploadProgress(current: number, total: number, filePercent: number): void {
     if (total === 0) return;
     const overallPercent = Math.round(((current - 1 + filePercent / 100) / total) * 100);
-    this.elements.sendBtn.innerHTML = `<span class="bd-spinner"></span> Uploading ${current}/${total}… ${overallPercent}%`;
+    this.setSendBtnLabel(`Uploading ${current}/${total}… ${overallPercent}%`);
+  }
+
+  private setSendBtnLabel(label: string): void {
+    let labelEl = this.elements.sendBtn.querySelector<HTMLSpanElement>('.bd-send-btn__label');
+    if (!labelEl) {
+      this.elements.sendBtn.innerHTML = `<span class="bd-spinner"></span> <span class="bd-send-btn__label"></span>`;
+      labelEl = this.elements.sendBtn.querySelector<HTMLSpanElement>('.bd-send-btn__label')!;
+    }
+    labelEl.textContent = label;
   }
 
   private setSubmitting(submitting: boolean): void {
     this.submitting = submitting;
     this.elements.sendBtn.disabled = submitting;
     if (submitting) {
-      this.elements.sendBtn.innerHTML = `<span class="bd-spinner"></span> ${this.t.sending}`;
+      this.setSendBtnLabel(this.t.sending);
     } else {
       this.elements.sendBtn.innerHTML = `${sendIcon()} ${this.t.sendButton}`;
     }
