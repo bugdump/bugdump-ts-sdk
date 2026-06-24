@@ -108,6 +108,16 @@ export interface BugdumpUserContext {
   [key: string]: unknown;
 }
 
+export type UserActionKind = 'click' | 'type' | 'navigate';
+
+export interface UserAction {
+  kind: UserActionKind;
+  ts: number;
+  selector?: string;
+  value?: string;
+  url?: string;
+}
+
 export interface ReportPayload {
   taskId?: number;
   description: string;
@@ -121,6 +131,7 @@ export interface ReportPayload {
   viewport?: { width: number; height: number };
   consoleLogs?: Record<string, unknown>[];
   networkRequests?: Record<string, unknown>[];
+  actions?: UserAction[];
   performance?: Record<string, unknown>;
   customContext?: Record<string, unknown>;
   textAnnotations?: Array<{ text: string }>;

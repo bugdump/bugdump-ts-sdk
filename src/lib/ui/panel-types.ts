@@ -1,4 +1,4 @@
-import type { CaptureMethod } from '../types';
+import type { CaptureMethod, UserAction } from '../types';
 
 export interface TextAnnotationMeta {
   text: string;
@@ -21,6 +21,7 @@ export interface PanelSubmitData {
   reporterEmail: string;
   taskPublicId: number | null;
   attachments: Attachment[];
+  actions: UserAction[];
 }
 
 export interface PanelFeatures {

@@ -1,8 +1,9 @@
 import { record } from '@rrweb/record';
 import type { eventWithTime, listenerHandler } from '@rrweb/types';
 
-const SESSION_REPLAY_WINDOW_MS = 60_000;
-const MAX_BUFFER_SIZE = 5000;
+const SESSION_REPLAY_WINDOW_MS = 180_000;
+const CHECKOUT_INTERVAL_MS = 60_000;
+const MAX_BUFFER_SIZE = 15_000;
 
 const META_EVENT = 4;
 const FULL_SNAPSHOT_EVENT = 2;
@@ -22,7 +23,7 @@ export class SessionReplayCollector {
         this.buffer.push(event);
         this.pruneOldEvents();
       },
-      checkoutEveryNms: SESSION_REPLAY_WINDOW_MS,
+      checkoutEveryNms: CHECKOUT_INTERVAL_MS,
       inlineStylesheet: true,
       inlineImages: true,
       collectFonts: true,

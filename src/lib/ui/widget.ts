@@ -92,22 +92,11 @@ export class Widget {
     }
   }
 
-  async openPanel(): Promise<void> {
+  openPanel(): void {
     if (this.open) return;
     this.open = true;
 
-    if (this.minimized) {
-      this.minimized = false;
-      this.triggerBtn.classList.add('bd-trigger--open');
-      this.triggerBtn.innerHTML = closeIcon();
-      this.panel.show();
-      return;
-    }
-
-    this.triggerBtn.disabled = true;
-    this.triggerBtn.innerHTML = '<div class="bd-spinner"></div>';
-    await this.panel.attachAutoScreenshot();
-    this.triggerBtn.disabled = false;
+    this.minimized = false;
     this.triggerBtn.classList.add('bd-trigger--open');
     this.triggerBtn.innerHTML = closeIcon();
     this.panel.show();

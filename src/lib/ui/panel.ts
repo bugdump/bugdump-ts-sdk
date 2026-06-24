@@ -22,11 +22,13 @@ import {
   mascotIcon,
 } from './icons';
 import { captureScreenshot, captureScreenshotNative } from '../capture/screenshot';
+import type { ScreenshotResult } from '../capture/screenshot';
 import { AnnotationOverlay, renderOperationsToCanvas } from '../capture/annotation';
 import type { TextOperation } from '../capture/annotation';
 import { DEFAULT_TRANSLATIONS } from '../core/config';
-import type { BugdumpTranslations, ReportResponse } from '../types';
+import type { BugdumpTranslations, CaptureMethod, ReportResponse, UserAction } from '../types';
 import type { SessionReplayCollector } from '../collectors/session-replay';
+import { deriveActions } from '../collectors/derive-actions';
 import { getAnnotationStyles } from './panel-annotation-styles';
 import { delay, loadImage, formatDuration, getSupportedMimeType } from './panel-utils';
 import {
@@ -56,6 +58,7 @@ export class Panel {
   private showingSuccess = false;
   private recording = false;
   private recordingArmed = false;
+  private recordingMethod: CaptureMethod = 'dom';
   private mediaRecorder: MediaRecorder | null = null;
   private mediaStream: MediaStream | null = null;
   private recordedChunks: Blob[] = [];
@@ -89,6 +92,7 @@ export class Panel {
 
   private sessionReplayCollector: SessionReplayCollector | null = null;
   private sessionReplayAttached = false;
+  private derivedActions: UserAction[] = [];
 
   constructor(private shadowRoot: ShadowRoot, features?: PanelFeatures, translations?: BugdumpTranslations) {
     this.features = features ?? { screenshot: true, screenshotMethod: 'dom', screenRecording: true, screenRecordingMethod: 'dom', attachments: true, allowTaskAttach: false };
@@ -192,6 +196,7 @@ export class Panel {
     this.sessionReplayCollector.stop();
 
     this.sessionReplayAttached = true;
+    this.derivedActions = deriveActions(events);
 
     if (events.length === 0) return;
 
@@ -212,33 +217,6 @@ export class Panel {
     this.sessionReplayCollector.start();
   }
 
-  async attachAutoScreenshot(): Promise<void> {
-    try {
-      // Always use DOM-based capture for the initial screenshot regardless of
-      // screenshotMethod config — native screen-capture requires user permission
-      // and should only be triggered by an explicit user action.
-      const result = await captureScreenshot({
-        filter: (node) => {
-          if (node instanceof HTMLElement && node.tagName.toLowerCase() === 'bugdump-widget') {
-            return false;
-          }
-          return true;
-        },
-      });
-
-      const thumbnailUrl = URL.createObjectURL(result.blob);
-      this.addAttachment({
-        id: generateAttachmentId(),
-        type: 'screenshot',
-        blob: result.blob,
-        name: `screenshot-${Date.now()}.jpg`,
-        thumbnailUrl,
-      });
-    } catch (err) {
-      console.warn('[Bugdump] Auto screenshot capture failed:', err);
-    }
-  }
-
   hide({ preserveAttachments = false } = {}): void {
     this.visible = false;
     this.elements.root.classList.remove('bd-panel--visible');
@@ -256,6 +234,7 @@ export class Panel {
     this.revokeAttachmentUrls();
     this.attachments = [];
     this.sessionReplayAttached = false;
+    this.derivedActions = [];
     this.renderAttachments();
   }
 
@@ -524,6 +503,7 @@ export class Panel {
         reporterEmail: this.elements.emailInput.value.trim(),
         taskPublicId,
         attachments: [...this.attachments],
+        actions: [...this.derivedActions],
       });
       this.showSuccessView(String(result.taskPublicId));
     } catch {
@@ -541,16 +521,17 @@ export class Panel {
       this.hide({ preserveAttachments: true });
       await delay(50);
 
-      const result = this.features.screenshotMethod === 'screen-capture'
-        ? await captureScreenshotNative()
-        : await captureScreenshot({
-            filter: (node) => {
-              if (node instanceof HTMLElement && node.tagName.toLowerCase() === 'bugdump-widget') {
-                return false;
-              }
-              return true;
-            },
-          });
+      let result: ScreenshotResult;
+      if (this.features.screenshotMethod === 'screen-capture') {
+        try {
+          result = await captureScreenshotNative();
+        } catch (nativeErr) {
+          console.warn('[Bugdump] Native screenshot failed, falling back to DOM:', nativeErr);
+          result = await this.captureScreenshotDom();
+        }
+      } else {
+        result = await this.captureScreenshotDom();
+      }
 
       const imageUrl = URL.createObjectURL(result.blob);
       const image = await loadImage(imageUrl);
@@ -563,6 +544,17 @@ export class Panel {
       this.elements.screenshotBtn.disabled = false;
       this.elements.screenshotBtn.innerHTML = originalContent;
     }
+  }
+
+  private captureScreenshotDom(): Promise<ScreenshotResult> {
+    return captureScreenshot({
+      filter: (node) => {
+        if (node instanceof HTMLElement && node.tagName.toLowerCase() === 'bugdump-widget') {
+          return false;
+        }
+        return true;
+      },
+    });
   }
 
   private showAnnotationOverlay(
@@ -756,7 +748,21 @@ export class Panel {
   private async armRecording(): Promise<void> {
     if (this.features.screenRecordingMethod !== 'dom') {
       const ok = await this.setupNativeRecorder();
-      if (!ok) return;
+      if (!ok) {
+        // Native setup failed (permission denied / unsupported) before recording began.
+        // Fall back to DOM (rrweb) recording when available; otherwise abort.
+        if (this.sessionReplayCollector) {
+          console.warn('[Bugdump] Native recording setup failed, falling back to DOM recording.');
+          this.recordingMethod = 'dom';
+          this.elements.root.classList.add('bd-panel--mode-dom');
+        } else {
+          return;
+        }
+      } else {
+        this.recordingMethod = 'screen-capture';
+      }
+    } else {
+      this.recordingMethod = 'dom';
     }
     this.recordingArmed = true;
     this.showRecordingBar();
@@ -766,7 +772,7 @@ export class Panel {
     if (this.recording) return;
     if (!this.recordingArmed) return;
 
-    if (this.features.screenRecordingMethod === 'dom') {
+    if (this.recordingMethod === 'dom') {
       this.startRecordingDom();
     } else {
       this.startRecordingNative();
@@ -1005,7 +1011,7 @@ export class Panel {
   }
 
   private stopRecording(): void {
-    if (this.features.screenRecordingMethod === 'dom') {
+    if (this.recordingMethod === 'dom') {
       this.stopRecordingDom();
     } else {
       if (this.mediaRecorder && this.mediaRecorder.state !== 'inactive') {
@@ -1016,7 +1022,7 @@ export class Panel {
   }
 
   private stopRecordingAsync(): Promise<void> {
-    if (this.features.screenRecordingMethod === 'dom') {
+    if (this.recordingMethod === 'dom') {
       this.stopRecordingDom();
       return Promise.resolve();
     }
@@ -1123,7 +1129,7 @@ export class Panel {
   }
 
   private discardRecording(): void {
-    if (this.features.screenRecordingMethod === 'dom') {
+    if (this.recordingMethod === 'dom') {
       if (this.recording && this.sessionReplayCollector) {
         this.sessionReplayCollector.stopRecording();
       }
@@ -1256,8 +1262,12 @@ export class Panel {
     this.elements.fileInput.value = '';
   }
 
+  private visibleAttachments(): Attachment[] {
+    return this.attachments.filter((a) => a.type !== 'session_replay');
+  }
+
   private addAttachment(attachment: Attachment): void {
-    if (this.attachments.length >= MAX_ATTACHMENTS) return;
+    if (this.visibleAttachments().length >= MAX_ATTACHMENTS) return;
     this.attachments.push(attachment);
     this.renderAttachments();
   }
@@ -1279,14 +1289,15 @@ export class Panel {
     const container = this.elements.attachmentsList;
     container.innerHTML = '';
 
-    if (this.attachments.length === 0) {
+    const visible = this.visibleAttachments();
+    if (visible.length === 0) {
       container.style.display = 'none';
       return;
     }
 
     container.style.display = 'flex';
 
-    for (const att of this.attachments) {
+    for (const att of visible) {
       const el = document.createElement('div');
       el.className = 'bd-attachment';
 
@@ -1312,11 +1323,6 @@ export class Panel {
         video.src = att.thumbnailUrl;
         video.muted = true;
         inner.appendChild(video);
-      } else if (att.type === 'session_replay') {
-        const iconDiv = document.createElement('div');
-        iconDiv.className = 'bd-attachment__icon';
-        iconDiv.innerHTML = replayIcon();
-        inner.appendChild(iconDiv);
       } else {
         const iconDiv = document.createElement('div');
         iconDiv.className = 'bd-attachment__icon';

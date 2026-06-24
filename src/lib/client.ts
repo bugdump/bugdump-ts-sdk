@@ -274,6 +274,7 @@ export class Bugdump {
       viewport: metadata.viewport,
       consoleLogs: telemetry.consoleLogs as unknown as Record<string, unknown>[],
       networkRequests: telemetry.networkRequests as unknown as Record<string, unknown>[],
+      actions: data.actions.length > 0 ? data.actions : undefined,
       performance: telemetry.performance as unknown as Record<string, unknown>,
       customContext: Object.keys(this.state.customContext).length > 0 ? this.state.customContext : undefined,
       attachments: uploadedAttachments.length > 0 ? uploadedAttachments : undefined,
