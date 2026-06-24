@@ -67,9 +67,9 @@ const bugdump = Bugdump.init({
   captureNetworkBodies: false,            // Capture request/response bodies
   features: {
     screenshot: true,                     // Screenshot capture
-    screenshotMethod: 'dom',              // 'dom' (html2canvas) or 'screen-capture' (getDisplayMedia)
+    screenshotMethod: 'screen-capture',   // 'screen-capture' (getDisplayMedia) or 'dom' (html2canvas)
     screenRecording: true,                // Screen recording
-    screenRecordingMethod: 'dom',         // 'dom' (rrweb) or 'screen-capture' (getDisplayMedia)
+    screenRecordingMethod: 'screen-capture', // 'screen-capture' (getDisplayMedia) or 'dom' (rrweb)
     sessionReplay: true,                  // Session replay collection
     attachments: true,                    // File attachments
     allowTaskAttach: false,               // Show "Attach to task" toggle
@@ -94,9 +94,9 @@ const bugdump = Bugdump.init({
 | Feature | Default | Description |
 |---|---|---|
 | `features.screenshot` | `true` | Screenshot capture button |
-| `features.screenshotMethod` | `'dom'` | `'dom'` uses html2canvas (no prompt). `'screen-capture'` uses getDisplayMedia (pixel-perfect, shows permission dialog) |
+| `features.screenshotMethod` | `'screen-capture'` | `'screen-capture'` (default) uses getDisplayMedia (pixel-perfect, shows permission dialog, falls back to DOM if denied). `'dom'` uses html2canvas (no prompt) |
 | `features.screenRecording` | `true` | Screen recording button |
-| `features.screenRecordingMethod` | `'dom'` | `'dom'` uses rrweb (no prompt, DOM-based). `'screen-capture'` uses getDisplayMedia (pixel-perfect, shows permission dialog) |
+| `features.screenRecordingMethod` | `'screen-capture'` | `'screen-capture'` (default) uses getDisplayMedia (pixel-perfect, shows permission dialog, falls back to DOM if denied). `'dom'` uses rrweb (no prompt, DOM-based) |
 | `features.sessionReplay` | `true` | Background session replay collection |
 | `features.attachments` | `true` | File attachment button |
 | `features.allowTaskAttach` | `false` | Show an "Attach to task" toggle so reporters can associate the report with an existing task by its public ID |
@@ -215,9 +215,9 @@ Use `data-*` attributes to configure the widget. All attributes are optional exc
   data-show-report-link="false"
   data-capture-network-bodies="false"
   data-screenshot="true"
-  data-screenshot-method="dom"
+  data-screenshot-method="screen-capture"
   data-screen-recording="true"
-  data-screen-recording-method="dom"
+  data-screen-recording-method="screen-capture"
   data-session-replay="true"
   data-attachments="true"
   data-allow-task-attach="false"
@@ -235,9 +235,9 @@ Use `data-*` attributes to configure the widget. All attributes are optional exc
 | `data-icon` | `icon` | `chat` | Custom trigger button icon (predefined name, URL, SVG, or emoji) |
 | `data-capture-network-bodies` | `captureNetworkBodies` | `false` | Capture request/response bodies |
 | `data-screenshot` | `features.screenshot` | `true` | Screenshot capture button |
-| `data-screenshot-method` | `features.screenshotMethod` | `dom` | `dom` (html2canvas) or `screen-capture` (getDisplayMedia) |
+| `data-screenshot-method` | `features.screenshotMethod` | `screen-capture` | `screen-capture` (getDisplayMedia) or `dom` (html2canvas) |
 | `data-screen-recording` | `features.screenRecording` | `true` | Screen recording button |
-| `data-screen-recording-method` | `features.screenRecordingMethod` | `dom` | `dom` (rrweb) or `screen-capture` (getDisplayMedia) |
+| `data-screen-recording-method` | `features.screenRecordingMethod` | `screen-capture` | `screen-capture` (getDisplayMedia) or `dom` (rrweb) |
 | `data-session-replay` | `features.sessionReplay` | `true` | Background session replay collection |
 | `data-attachments` | `features.attachments` | `true` | File attachment button |
 | `data-allow-task-attach` | `features.allowTaskAttach` | `false` | Show "Attach to task" toggle in the widget |
