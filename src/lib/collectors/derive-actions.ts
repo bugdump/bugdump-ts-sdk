@@ -54,6 +54,37 @@ function describeNode(info: NodeInfo | undefined): string {
  * the replay playhead and the console/network timelines. Input values are dropped when
  * masked, so no PII is stored.
  */
+/**
+ * Derive actions for a specific time window (e.g. a recording span). Carries in the most
+ * recent FullSnapshot at or before the window start so click selectors still resolve, even
+ * when the window itself contains no snapshot.
+ */
+export function deriveActionsInWindow(
+  events: eventWithTime[],
+  startTs: number,
+  endTs: number,
+): UserAction[] {
+  let lastSnapshot: eventWithTime | null = null;
+  const windowEvents: eventWithTime[] = [];
+
+  for (const event of events) {
+    if (event.timestamp > endTs) break;
+    if (event.type === EventType.FullSnapshot && event.timestamp <= startTs) {
+      lastSnapshot = event;
+    }
+    if (event.timestamp >= startTs && event.timestamp <= endTs) {
+      windowEvents.push(event);
+    }
+  }
+
+  if (windowEvents.length === 0) return [];
+
+  const withSnapshot =
+    lastSnapshot && lastSnapshot.timestamp < startTs ? [lastSnapshot, ...windowEvents] : windowEvents;
+
+  return deriveActions(withSnapshot);
+}
+
 export function deriveActions(events: eventWithTime[]): UserAction[] {
   if (events.length === 0) return [];
 

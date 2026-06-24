@@ -37,17 +37,30 @@ function captureTiming(): PerformanceTimingData | null {
   const entries = performance.getEntriesByType('navigation');
   if (entries.length === 0) return null;
 
-  const nav = entries[0] as PerformanceNavigationTiming;
+  const nav = entries[0] as PerformanceNavigationTiming & { activationStart?: number };
   const paintEntries = performance.getEntriesByType('paint');
   const fp = paintEntries.find((e) => e.name === 'first-paint');
   const fcp = paintEntries.find((e) => e.name === 'first-contentful-paint');
 
+  // All PerformanceNavigationTiming / paint timestamps are relative to the time
+  // origin, not to navigation start. For prerendered pages the page is "activated"
+  // partway through the timeline, so user-perceived metrics must be measured from
+  // activationStart. For a normal navigation activationStart is 0 and this is a no-op.
+  const activationStart = nav.activationStart ?? 0;
+  const relativeTo = (timestamp: number): number | null => {
+    if (timestamp <= 0) return null;
+    return Math.max(0, Math.round(timestamp - activationStart));
+  };
+
   return {
-    domContentLoaded: nav.domContentLoadedEventEnd > 0 ? Math.round(nav.domContentLoadedEventEnd) : null,
-    loadComplete: nav.loadEventEnd > 0 ? Math.round(nav.loadEventEnd) : null,
-    firstPaint: fp ? Math.round(fp.startTime) : null,
-    firstContentfulPaint: fcp ? Math.round(fcp.startTime) : null,
-    ttfb: nav.responseStart > 0 ? Math.round(nav.responseStart) : null,
+    domContentLoaded: relativeTo(nav.domContentLoadedEventEnd),
+    loadComplete: relativeTo(nav.loadEventEnd),
+    firstPaint: fp ? relativeTo(fp.startTime) : null,
+    firstContentfulPaint: fcp ? relativeTo(fcp.startTime) : null,
+    // TTFB is the gap between navigation start and the first response byte.
+    // responseStart is relative to the time origin, so subtract the navigation's
+    // own startTime (and activationStart for prerender) rather than using it raw.
+    ttfb: nav.responseStart > 0 ? Math.max(0, Math.round(nav.responseStart - nav.startTime - activationStart)) : null,
   };
 }
 
@@ -72,6 +85,9 @@ function captureResources(): PerformanceResourceData[] {
     name: entry.name,
     type: entry.initiatorType,
     duration: Math.round(entry.duration),
-    size: entry.transferSize || 0,
+    // transferSize is the bytes over the wire (0 for cached or cross-origin
+    // resources without Timing-Allow-Origin). Fall back to the body sizes so the
+    // value still reflects the resource weight instead of silently reading 0.
+    size: entry.transferSize || entry.encodedBodySize || entry.decodedBodySize || 0,
   }));
 }

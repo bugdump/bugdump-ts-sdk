@@ -138,6 +138,9 @@ const bugdump = Bugdump.init({
 | `successTitle` | `Feedback sent!` | Success message title |
 | `successSubtitle` | `Thank you for your feedback.` | Success message subtitle |
 | `errorMessage` | `Something went wrong. Please try again.` | Error message |
+| `emptyDescriptionMessage` | `Please describe what happened before sending.` | Validation message shown when submitting with an empty description |
+| `closeButton` | `Close` | Close button aria-label |
+| `submitAnother` | `Submit another` | Button on the success screen to file another report |
 | `arrowTool` | `Arrow` | Annotation arrow tool tooltip |
 | `rectangleTool` | `Rectangle` | Annotation rectangle tool tooltip |
 | `drawTool` | `Draw` | Annotation freehand tool tooltip |
@@ -199,6 +202,51 @@ The script-tag version accepts the same filters as JSON on `data-console-filter`
 ```
 
 Unknown fields or non-string array entries in the JSON are ignored with a console warning — a malformed filter attribute never breaks SDK initialization.
+
+## Data Collection Limits
+
+The SDK keeps telemetry in rolling in-memory buffers and caps how much travels in a report. These limits are **fixed (not configurable)** and chosen to balance debugging detail against payload size — they're documented here so you know exactly what a report contains.
+
+### Buffer sizes
+
+| Buffer | Idle cap | While recording | Per-entry truncation |
+|---|---|---|---|
+| Console logs | 300 entries | 2000 entries | 8 KB per argument |
+| Network requests | 150 entries | 1000 entries | 32 KB per request/response body |
+| Session replay | 15,000 rrweb events | — | 3-minute rolling window |
+
+Each buffer is FIFO: once full, the oldest entries are evicted. Use [console/network filters](#filtering-noise) to keep noise out of these buffers so the entries you care about aren't pushed out.
+
+### Recording overflow
+
+While a screen recording or session replay is **actively recording**, the console and network buffers temporarily expand to their higher "while recording" caps (2000 logs / 1000 requests). This keeps the captured trace complete for the full recording window. When recording stops, the buffers trim back to their idle caps, keeping the newest entries. This applies to both `screen-capture` and `dom` recording methods.
+
+### Submission payload cap
+
+Before a report is sent, the full payload is capped at **10 MB**. If it exceeds that, the SDK trims in this order until it fits, so the most useful data survives:
+
+1. Truncate each console-log argument to 512 bytes
+2. Drop all network request/response bodies
+3. Drop oldest console logs (keeps at least 30)
+4. Drop oldest network requests (keeps at least 20)
+
+The Bugdump API enforces a 25 MB request-body limit server-side; the 10 MB client cap stays well under it. The cap is measured by character count rather than UTF-8 byte length, and the large server-side margin absorbs that difference. File attachments (screenshots, recordings, voice notes) are uploaded separately via presigned URLs and are **not** counted against this payload cap.
+
+When trimming occurs, the report records what was cut (bodies dropped, logs/requests dropped, args truncated). The Bugdump dashboard surfaces this as a **"Trimmed"** badge on the report and a notice in the report viewer, so anyone reading the report knows the telemetry is incomplete and why.
+
+To keep memory bounded during long captures, the network collector also enforces a **5 MB total budget for captured request/response bodies** (only relevant when `captureNetworkBodies` is enabled). Once the budget is reached, further requests are still logged but their bodies are dropped — so a lengthy recording can't grow the tab's memory without limit. This is independent of the per-body 32 KB cap and the entry-count caps above.
+
+### Performance metrics
+
+The `performance` snapshot in each report (and `collectTelemetry().performance`) is read from the browser's standard timing APIs:
+
+- **TTFB** — `responseStart` minus navigation start (`PerformanceNavigationTiming`)
+- **FCP / First Paint** — `first-contentful-paint` / `first-paint` paint timings
+- **DOM Content Loaded** — `domContentLoadedEventEnd`
+- **Load** — `loadEventEnd`
+- **Memory** — `usedJSHeapSize` / `totalJSHeapSize` / `jsHeapSizeLimit` from `performance.memory` (Chromium only; `null` elsewhere)
+
+All timings are normalized against `activationStart`, so they remain correct for prerendered pages.
 
 ### Script Tag
 

@@ -48,6 +48,10 @@ export class Widget {
     this.panel.setOnSubmit(handler);
   }
 
+  setOnRecordingChange(handler: (isRecording: boolean) => void): void {
+    this.panel.setOnRecordingChange(handler);
+  }
+
   setReporterInfo(name: string, email: string): void {
     this.panel.setReporterInfo(name, email);
   }

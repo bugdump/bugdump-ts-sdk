@@ -10,7 +10,8 @@ export interface ConsoleCollectorOptions {
   filter?: ConsoleFilterOptions;
 }
 
-const MAX_ENTRIES = 50;
+const MAX_ENTRIES = 300;
+const MAX_ENTRIES_RECORDING = 2000;
 const MAX_ARG_SIZE = 8192;
 
 type ConsoleMethod = 'log' | 'warn' | 'error' | 'info' | 'debug';
@@ -20,10 +21,21 @@ export class ConsoleCollector {
   private buffer: ConsoleLogEntry[] = [];
   private originals = new Map<ConsoleMethod, (...args: unknown[]) => void>();
   private active = false;
+  private elevated = false;
   private options: ConsoleCollectorOptions;
 
   constructor(options: ConsoleCollectorOptions = {}) {
     this.options = options;
+  }
+
+  setRecording(recording: boolean): void {
+    // Raise the cap while recording and keep it raised until flush() — entries captured
+    // during the recording must survive past the Stop click, until the report is sent.
+    if (recording) this.elevated = true;
+  }
+
+  private get maxEntries(): number {
+    return this.elevated ? MAX_ENTRIES_RECORDING : MAX_ENTRIES;
   }
 
   start(): void {
@@ -60,14 +72,20 @@ export class ConsoleCollector {
   flush(): ConsoleLogEntry[] {
     const entries = [...this.buffer];
     this.buffer = [];
+    this.elevated = false;
     return entries;
   }
 
   private push(entry: ConsoleLogEntry): void {
     if (!this.shouldKeep(entry)) return;
     this.buffer.push(entry);
-    if (this.buffer.length > MAX_ENTRIES) {
-      this.buffer.shift();
+    this.trimToCap();
+  }
+
+  private trimToCap(): void {
+    const cap = this.maxEntries;
+    if (this.buffer.length > cap) {
+      this.buffer.splice(0, this.buffer.length - cap);
     }
   }
 

@@ -28,7 +28,7 @@ import type { TextOperation } from '../capture/annotation';
 import { DEFAULT_TRANSLATIONS } from '../core/config';
 import type { BugdumpTranslations, CaptureMethod, ReportResponse, UserAction } from '../types';
 import type { SessionReplayCollector } from '../collectors/session-replay';
-import { deriveActions } from '../collectors/derive-actions';
+import { deriveActions, deriveActionsInWindow } from '../collectors/derive-actions';
 import { getAnnotationStyles } from './panel-annotation-styles';
 import { delay, loadImage, formatDuration, getSupportedMimeType } from './panel-utils';
 import {
@@ -86,6 +86,7 @@ export class Panel {
   private onSubmit: ((data: PanelSubmitData) => Promise<ReportResponse>) | null = null;
   private onClose: (() => void) | null = null;
   private onMinimize: (() => void) | null = null;
+  private onRecordingChange: ((isRecording: boolean) => void) | null = null;
 
   private dashboardUrl: string | null = null;
   private showReportLink = false;
@@ -104,6 +105,10 @@ export class Panel {
 
   setOnSubmit(handler: (data: PanelSubmitData) => Promise<ReportResponse>): void {
     this.onSubmit = handler;
+  }
+
+  setOnRecordingChange(handler: (isRecording: boolean) => void): void {
+    this.onRecordingChange = handler;
   }
 
   setOnClose(handler: () => void): void {
@@ -215,6 +220,15 @@ export class Panel {
     });
 
     this.sessionReplayCollector.start();
+  }
+
+  private deriveActionsForWindow(startTs: number, endTs: number): void {
+    if (!this.sessionReplayCollector) return;
+    const events = this.sessionReplayCollector.getSessionReplay();
+    const actions = deriveActionsInWindow(events, startTs, endTs);
+    if (actions.length > 0) {
+      this.derivedActions = actions;
+    }
   }
 
   hide({ preserveAttachments = false } = {}): void {
@@ -869,6 +883,9 @@ export class Panel {
           durationMs: recordingEndedAt - this.recordingStartTime,
         },
       });
+      // Native (screen-capture) recording has no rrweb slice of its own, so bind the
+      // Actions list to the rrweb events that fall within the recorded time window.
+      this.deriveActionsForWindow(this.recordingStartTime, recordingEndedAt);
       this.cleanupMediaStream();
       this.setRecordingState(false);
     };
@@ -1070,6 +1087,10 @@ export class Panel {
           durationMs: lastTs - firstTs,
         },
       });
+
+      // Bind the Actions list to the recorded window so actions, video, and replay
+      // all cover the same span (instead of the rolling window from when the panel opened).
+      this.derivedActions = deriveActions(recordingEvents);
     }
 
     this.setRecordingState(false);
@@ -1085,6 +1106,9 @@ export class Panel {
   }
 
   private setRecordingState(isRecording: boolean): void {
+    if (this.recording !== isRecording) {
+      this.onRecordingChange?.(isRecording);
+    }
     this.recording = isRecording;
     if (isRecording) {
       this.recordingStartTime = Date.now();

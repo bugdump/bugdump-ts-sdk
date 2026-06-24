@@ -19,8 +19,13 @@ export interface NetworkCollectorOptions {
   filter?: NetworkFilterOptions;
 }
 
-const MAX_ENTRIES = 30;
+const MAX_ENTRIES = 150;
+const MAX_ENTRIES_RECORDING = 1000;
 const MAX_BODY_SIZE = 32_768;
+// Total bytes of captured request/response bodies kept in memory at once. Independent
+// of the entry count: once exhausted, requests are still logged but their bodies are
+// dropped, so a long capture (e.g. while recording) can't balloon the tab's memory.
+const MAX_TOTAL_BODY_BYTES = 5 * 1024 * 1024;
 
 export class NetworkCollector {
   private buffer: NetworkRequestEntry[] = [];
@@ -28,10 +33,24 @@ export class NetworkCollector {
   private originalXhrOpen: typeof XMLHttpRequest.prototype.open | null = null;
   private originalXhrSend: typeof XMLHttpRequest.prototype.send | null = null;
   private active = false;
+  private elevated = false;
+  private bodyBytes = 0;
   private options: NetworkCollectorOptions;
 
   constructor(options: NetworkCollectorOptions = {}) {
     this.options = options;
+  }
+
+  setRecording(recording: boolean): void {
+    // Recording raises the cap so the full recorded window is captured. We intentionally
+    // do NOT lower it when recording stops — the elevated entries must survive until the
+    // report is submitted (flush()), which is typically after the user clicks Stop. The
+    // ceiling drops back to the base cap only on flush().
+    if (recording) this.elevated = true;
+  }
+
+  private get maxEntries(): number {
+    return this.elevated ? MAX_ENTRIES_RECORDING : MAX_ENTRIES;
   }
 
   start(): void {
@@ -55,14 +74,38 @@ export class NetworkCollector {
   flush(): NetworkRequestEntry[] {
     const entries = [...this.buffer];
     this.buffer = [];
+    this.bodyBytes = 0;
+    this.elevated = false;
     return entries;
   }
 
   private push(entry: NetworkRequestEntry): void {
     if (!this.shouldKeep(entry)) return;
+    this.enforceBodyBudget(entry);
     this.buffer.push(entry);
-    if (this.buffer.length > MAX_ENTRIES) {
-      this.buffer.shift();
+    this.trimToCap();
+  }
+
+  private enforceBodyBudget(entry: NetworkRequestEntry): void {
+    const entryBytes = (entry.requestBody?.length ?? 0) + (entry.responseBody?.length ?? 0);
+    if (entryBytes === 0) return;
+
+    if (this.bodyBytes + entryBytes > MAX_TOTAL_BODY_BYTES) {
+      entry.requestBody = null;
+      entry.responseBody = null;
+      return;
+    }
+    this.bodyBytes += entryBytes;
+  }
+
+  private trimToCap(): void {
+    const cap = this.maxEntries;
+    if (this.buffer.length > cap) {
+      const removed = this.buffer.splice(0, this.buffer.length - cap);
+      for (const e of removed) {
+        this.bodyBytes -= (e.requestBody?.length ?? 0) + (e.responseBody?.length ?? 0);
+      }
+      if (this.bodyBytes < 0) this.bodyBytes = 0;
     }
   }
 

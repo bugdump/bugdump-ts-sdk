@@ -134,6 +134,12 @@ export interface ReportPayload {
   actions?: UserAction[];
   performance?: Record<string, unknown>;
   customContext?: Record<string, unknown>;
+  telemetryTrimmed?: {
+    argsTruncated: boolean;
+    bodiesDropped: boolean;
+    consoleLogsDropped: number;
+    networkRequestsDropped: number;
+  };
   textAnnotations?: Array<{ text: string }>;
   attachments?: Array<{
     fileId: string;

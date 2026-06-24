@@ -222,6 +222,10 @@ export class Bugdump {
       translations: this.state.config?.translations,
     });
     this.widget.setOnSubmit((data) => this.handleSubmit(data));
+    this.widget.setOnRecordingChange((isRecording) => {
+      this.consoleCollector.setRecording(isRecording);
+      this.networkCollector.setRecording(isRecording);
+    });
     this.widget.setSessionReplayCollector(this.sessionReplayCollector);
     this.widget.setShowReportLink(this.state.config?.showReportLink ?? false);
   }
@@ -280,7 +284,19 @@ export class Bugdump {
       attachments: uploadedAttachments.length > 0 ? uploadedAttachments : undefined,
     };
 
-    const result = await httpClient.submitReport(trimPayload(payload));
+    const { payload: trimmedPayload, info } = trimPayload(payload);
+    const telemetryWasTrimmed =
+      info.argsTruncated || info.bodiesDropped || info.consoleLogsDropped > 0 || info.networkRequestsDropped > 0;
+    if (telemetryWasTrimmed) {
+      trimmedPayload.telemetryTrimmed = {
+        argsTruncated: info.argsTruncated,
+        bodiesDropped: info.bodiesDropped,
+        consoleLogsDropped: info.consoleLogsDropped,
+        networkRequestsDropped: info.networkRequestsDropped,
+      };
+    }
+
+    const result = await httpClient.submitReport(trimmedPayload);
     this.flushCollectors();
     return result;
   }
