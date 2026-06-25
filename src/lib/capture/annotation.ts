@@ -246,6 +246,9 @@ export class AnnotationOverlay {
   private screenshotImage: HTMLImageElement | null = null;
   private activeTextInput: HTMLInputElement | null = null;
 
+  private moveRafId: number | null = null;
+  private pendingPreviewPoint: Point | null = null;
+
   private onPointerDownBound: (e: PointerEvent) => void;
   private onPointerMoveBound: (e: PointerEvent) => void;
   private onPointerUpBound: (e: PointerEvent) => void;
@@ -352,6 +355,7 @@ export class AnnotationOverlay {
   }
 
   destroy(): void {
+    this.cancelPendingFrame();
     this.dismissActiveTextInput();
     this.canvas.removeEventListener('pointerdown', this.onPointerDownBound);
     this.canvas.removeEventListener('pointermove', this.onPointerMoveBound);
@@ -392,17 +396,40 @@ export class AnnotationOverlay {
 
     const point = this.getCanvasPoint(e);
 
+    // Freehand needs every point so the stroke isn't decimated — capture synchronously.
     if (this.currentTool === 'freehand') {
       this.currentPoints.push(point);
     }
 
-    this.redraw();
-    this.drawPreview(point);
+    // Coalesce drawing into one frame: pointermove can fire far faster than the display
+    // refreshes, and each redraw clears the canvas, re-blits the screenshot, and re-renders
+    // every committed operation. Painting once per frame yields the same visible result.
+    this.pendingPreviewPoint = point;
+    if (this.moveRafId === null) {
+      this.moveRafId = requestAnimationFrame(() => {
+        this.moveRafId = null;
+        if (!this.isDrawing || !this.pendingPreviewPoint) return;
+        this.redraw();
+        this.drawPreview(this.pendingPreviewPoint);
+      });
+    }
+  }
+
+  private cancelPendingFrame(): void {
+    if (this.moveRafId !== null) {
+      cancelAnimationFrame(this.moveRafId);
+      this.moveRafId = null;
+    }
+    this.pendingPreviewPoint = null;
   }
 
   private onPointerUp(e: PointerEvent): void {
     if (!this.isDrawing || !this.startPoint) return;
     e.preventDefault();
+
+    // A frame may be queued from the last pointermove; drop it so it can't repaint a
+    // stale preview after we commit the operation and do the final redraw below.
+    this.cancelPendingFrame();
 
     const endPoint = this.getCanvasPoint(e);
 

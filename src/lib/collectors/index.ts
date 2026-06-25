@@ -1,3 +1,4 @@
+export { ActionCollector } from './action';
 export { ConsoleCollector, type ConsoleLogEntry } from './console';
 export { NetworkCollector, type NetworkRequestEntry } from './network';
 export { SessionReplayCollector } from './session-replay';

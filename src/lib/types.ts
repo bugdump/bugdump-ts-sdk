@@ -108,13 +108,15 @@ export interface BugdumpUserContext {
   [key: string]: unknown;
 }
 
-export type UserActionKind = 'click' | 'type' | 'navigate';
+export type UserActionKind = 'click' | 'type' | 'toggle' | 'select' | 'submit' | 'navigate';
 
 export interface UserAction {
   kind: UserActionKind;
   ts: number;
   selector?: string;
   value?: string;
+  checked?: boolean;
+  masked?: boolean;
   url?: string;
 }
 

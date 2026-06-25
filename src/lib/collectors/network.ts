@@ -152,9 +152,7 @@ export class NetworkCollector {
 
         if (self.options.captureBodies) {
           try {
-            const cloned = response.clone();
-            const text = await cloned.text();
-            responseBody = self.truncateBody(text);
+            responseBody = await self.readCappedBody(response.clone());
           } catch {
             // ignore - body may not be readable
           }
@@ -308,6 +306,44 @@ export class NetworkCollector {
   private truncateBody(text: string): string {
     if (text.length <= MAX_BODY_SIZE) return text;
     return text.slice(0, MAX_BODY_SIZE) + '…[truncated]';
+  }
+
+  /**
+   * Read a response body but stop decoding once enough text exists to satisfy the
+   * truncation cap. A large response (e.g. several MB) would otherwise be fully decoded
+   * into a string only to throw most of it away. Reads the stream chunk by chunk and
+   * stops as soon as the decoded length exceeds MAX_BODY_SIZE — `truncateBody` then
+   * yields the identical result it would for a full decode. Falls back to `text()` when
+   * the body is not a readable stream.
+   */
+  private async readCappedBody(response: Response): Promise<string> {
+    const stream = response.body;
+    if (!stream) {
+      return this.truncateBody(await response.text());
+    }
+
+    const reader = stream.getReader();
+    const decoder = new TextDecoder();
+    let text = '';
+    let drained = false;
+    try {
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (value) text += decoder.decode(value, { stream: true });
+        if (done) {
+          text += decoder.decode();
+          drained = true;
+          break;
+        }
+        if (text.length > MAX_BODY_SIZE) break;
+      }
+    } finally {
+      // Cancelling releases the lock and discards the rest. Only needed when we stopped
+      // early; a fully drained stream is already closed. This is a clone, so cancelling
+      // never affects the body the application itself reads.
+      if (!drained) reader.cancel().catch(() => {});
+    }
+    return this.truncateBody(text);
   }
 
   private parseXhrResponseHeaders(raw: string): Record<string, string> {

@@ -28,9 +28,9 @@ import type { TextOperation } from '../capture/annotation';
 import { DEFAULT_TRANSLATIONS } from '../core/config';
 import type { BugdumpTranslations, CaptureMethod, ReportResponse, UserAction } from '../types';
 import type { SessionReplayCollector } from '../collectors/session-replay';
-import { trimReplayToBudget } from '../collectors/session-replay';
-import { serializeReplay, packedReplaySize } from '../collectors/replay-serializer';
-import { deriveActions, deriveActionsInWindow } from '../collectors/derive-actions';
+import { trimReplayToBudget, SESSION_REPLAY_WINDOW_MS } from '../collectors/session-replay';
+import { ReplayPacker } from '../collectors/replay-serializer';
+import type { ActionCollector } from '../collectors/action';
 import { getAnnotationStyles } from './panel-annotation-styles';
 import { delay, loadImage, formatDuration, getSupportedMimeType } from './panel-utils';
 import {
@@ -94,6 +94,7 @@ export class Panel {
   private showReportLink = false;
 
   private sessionReplayCollector: SessionReplayCollector | null = null;
+  private actionCollector: ActionCollector | null = null;
   private sessionReplayAttached = false;
   private derivedActions: UserAction[] = [];
 
@@ -127,6 +128,10 @@ export class Panel {
 
   setSessionReplayCollector(collector: SessionReplayCollector): void {
     this.sessionReplayCollector = collector;
+  }
+
+  setActionCollector(collector: ActionCollector): void {
+    this.actionCollector = collector;
   }
 
   setRemoveBranding(remove: boolean): void {
@@ -203,16 +208,18 @@ export class Panel {
     this.sessionReplayCollector.stop();
 
     this.sessionReplayAttached = true;
-    // Derive actions from the full window first so the Actions list survives even
-    // if the replay blob is trimmed (or dropped entirely) for size below.
-    this.derivedActions = deriveActions(events);
+    // The action collector slices its own buffer by the same rolling window duration as the
+    // replay — independently of rrweb's event timestamps — so the actions list survives even
+    // if rrweb produced nothing or session replay is disabled.
+    this.derivedActions = this.actionCollector?.getRecentActions(SESSION_REPLAY_WINDOW_MS) ?? [];
 
     if (events.length === 0) {
       this.sessionReplayCollector.start();
       return;
     }
 
-    const fitted = trimReplayToBudget(events, this.maxMediaSize, packedReplaySize);
+    const packer = new ReplayPacker();
+    const fitted = trimReplayToBudget(events, this.maxMediaSize, (slice) => packer.size(slice));
     if (fitted.length > 0) {
       const durationMs = fitted.length >= 2
         ? fitted[fitted.length - 1]!.timestamp - fitted[0]!.timestamp
@@ -222,7 +229,7 @@ export class Panel {
       this.addAttachment({
         id: generateAttachmentId(),
         type: 'session_replay',
-        blob: serializeReplay(fitted),
+        blob: packer.serialize(fitted),
         name: `session-replay-${Date.now()}.json`,
         durationSeconds: durationS,
       });
@@ -233,10 +240,8 @@ export class Panel {
     this.sessionReplayCollector.start();
   }
 
-  private deriveActionsForWindow(startTs: number, endTs: number): void {
-    if (!this.sessionReplayCollector) return;
-    const events = this.sessionReplayCollector.getSessionReplay();
-    const actions = deriveActionsInWindow(events, startTs, endTs);
+  private collectActionsForWindow(startTs: number, endTs: number): void {
+    const actions = this.actionCollector?.getActionsInWindow(startTs, endTs) ?? [];
     if (actions.length > 0) {
       this.derivedActions = actions;
     }
@@ -896,7 +901,7 @@ export class Panel {
       });
       // Native (screen-capture) recording has no rrweb slice of its own, so bind the
       // Actions list to the rrweb events that fall within the recorded time window.
-      this.deriveActionsForWindow(this.recordingStartTime, recordingEndedAt);
+      this.collectActionsForWindow(this.recordingStartTime, recordingEndedAt);
       this.cleanupMediaStream();
       this.setRecordingState(false);
     };
@@ -1084,19 +1089,21 @@ export class Panel {
     const recordingEvents = this.sessionReplayCollector.stopRecording();
 
     if (recordingEvents.length > 0) {
-      // Bind the Actions list to the recorded window so actions, video, and replay
-      // all cover the same span (instead of the rolling window from when the panel opened).
-      // Derived before any size trimming so actions survive even if the replay is dropped.
-      this.derivedActions = deriveActions(recordingEvents);
+      // Bind the Actions list to the recorded window so actions, video, and replay all
+      // cover the same span (instead of the rolling window from when the panel opened).
+      // The action collector slices by the panel's own Record/Stop timestamps — no rrweb
+      // event times — so the two stay decoupled.
+      this.derivedActions = this.actionCollector?.getActionsInWindow(this.recordingStartTime, Date.now()) ?? [];
 
-      const fitted = trimReplayToBudget(recordingEvents, this.maxMediaSize, packedReplaySize);
+      const packer = new ReplayPacker();
+      const fitted = trimReplayToBudget(recordingEvents, this.maxMediaSize, (slice) => packer.size(slice));
       if (fitted.length > 0) {
         const firstTs = fitted[0]!.timestamp;
         const lastTs = fitted[fitted.length - 1]!.timestamp;
         this.addAttachment({
           id: generateAttachmentId(),
           type: 'recording',
-          blob: serializeReplay(fitted),
+          blob: packer.serialize(fitted),
           name: `recording-${Date.now()}.json`,
           metadata: {
             recordingStartedAt: firstTs,

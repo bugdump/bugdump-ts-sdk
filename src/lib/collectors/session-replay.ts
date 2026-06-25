@@ -1,7 +1,7 @@
 import { record } from '@rrweb/record';
 import type { eventWithTime, listenerHandler } from '@rrweb/types';
 
-const SESSION_REPLAY_WINDOW_MS = 180_000;
+export const SESSION_REPLAY_WINDOW_MS = 180_000;
 const CHECKOUT_INTERVAL_MS = 60_000;
 const MAX_BUFFER_SIZE = 15_000;
 

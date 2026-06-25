@@ -5,6 +5,7 @@ import { HttpClient } from './http-client';
 import { ConsoleCollector } from './collectors/console';
 import { NetworkCollector } from './collectors/network';
 import { SessionReplayCollector } from './collectors/session-replay';
+import { ActionCollector } from './collectors/action';
 import { capturePerformance } from './collectors/performance';
 import { captureMetadata } from './collectors/metadata';
 import { Widget } from './ui/widget';
@@ -32,6 +33,7 @@ export class Bugdump {
   private consoleCollector: ConsoleCollector;
   private networkCollector: NetworkCollector;
   private sessionReplayCollector: SessionReplayCollector;
+  private actionCollector: ActionCollector;
   private widget: Widget | null = null;
 
   private constructor() {
@@ -39,6 +41,7 @@ export class Bugdump {
     this.consoleCollector = new ConsoleCollector();
     this.networkCollector = new NetworkCollector();
     this.sessionReplayCollector = new SessionReplayCollector();
+    this.actionCollector = new ActionCollector();
   }
 
   private static get isBrowser(): boolean {
@@ -65,6 +68,7 @@ export class Bugdump {
     if (Bugdump.isBrowser) {
       instance.consoleCollector.start();
       instance.networkCollector.start();
+      instance.actionCollector.start();
       if (resolved.features.sessionReplay) {
         instance.sessionReplayCollector.start();
       }
@@ -166,6 +170,7 @@ export class Bugdump {
   private flushCollectors(): void {
     this.consoleCollector.flush();
     this.networkCollector.flush();
+    this.actionCollector.flush();
   }
 
   destroy(): void {
@@ -175,6 +180,7 @@ export class Bugdump {
     this.consoleCollector.stop();
     this.networkCollector.stop();
     this.sessionReplayCollector.stop();
+    this.actionCollector.stop();
     this.state = createInitialState();
     this.httpClient = null;
     Bugdump.instance = null;
@@ -225,8 +231,10 @@ export class Bugdump {
     this.widget.setOnRecordingChange((isRecording) => {
       this.consoleCollector.setRecording(isRecording);
       this.networkCollector.setRecording(isRecording);
+      this.actionCollector.setRecording(isRecording);
     });
     this.widget.setSessionReplayCollector(this.sessionReplayCollector);
+    this.widget.setActionCollector(this.actionCollector);
     this.widget.setShowReportLink(this.state.config?.showReportLink ?? false);
   }
 

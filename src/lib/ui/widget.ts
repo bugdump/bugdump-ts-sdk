@@ -4,6 +4,7 @@ import { Panel } from './panel';
 import type { PanelSubmitData, PanelFeatures } from './panel';
 import type { BugdumpTheme, BugdumpTranslations, ReportResponse } from '../types';
 import type { SessionReplayCollector } from '../collectors/session-replay';
+import type { ActionCollector } from '../collectors/action';
 
 export class Widget {
   private host: HTMLElement;
@@ -70,6 +71,10 @@ export class Widget {
 
   setSessionReplayCollector(collector: SessionReplayCollector): void {
     this.panel.setSessionReplayCollector(collector);
+  }
+
+  setActionCollector(collector: ActionCollector): void {
+    this.panel.setActionCollector(collector);
   }
 
   setRemoveBranding(remove: boolean): void {
