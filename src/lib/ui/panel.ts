@@ -39,6 +39,10 @@ import {
   DEFAULT_MAX_MEDIA_SIZE,
   RECORDING_TIMESLICE_MS,
   MAX_RECORDING_DURATION_S,
+  RECORDING_MAX_WIDTH,
+  RECORDING_MAX_HEIGHT,
+  RECORDING_MAX_FRAMERATE,
+  RECORDING_VIDEO_BITRATE,
   generateAttachmentId,
 } from './panel-types';
 import type {
@@ -508,7 +512,10 @@ export class Panel {
 
   private async handleSubmit(): Promise<void> {
     const description = this.elements.textarea.value.trim();
-    if (!description) {
+    // A description is required unless the user attached at least one real file
+    // (screenshots, recordings, voice notes, uploads) — the automatic session replay
+    // does not count, since it is captured without explicit user intent.
+    if (!description && this.visibleAttachments().length === 0) {
       this.showError(this.t.emptyDescriptionMessage);
       this.elements.textarea.focus();
       return;
@@ -830,7 +837,11 @@ export class Panel {
   private async setupNativeRecorder(): Promise<boolean> {
     try {
       this.mediaStream = await navigator.mediaDevices.getDisplayMedia({
-        video: true,
+        video: {
+          width: { max: RECORDING_MAX_WIDTH },
+          height: { max: RECORDING_MAX_HEIGHT },
+          frameRate: { max: RECORDING_MAX_FRAMERATE },
+        },
         audio: true,
         preferCurrentTab: true,
       } as DisplayMediaStreamOptions);
@@ -856,6 +867,11 @@ export class Panel {
     }
 
     const videoTrack = videoTracks[0]!;
+    // Hint the encoder to prioritise per-frame sharpness over motion smoothness — screen
+    // recordings are mostly static UI with small text, where 'detail' keeps fonts legible.
+    if ('contentHint' in videoTrack) {
+      videoTrack.contentHint = 'detail';
+    }
     const tracks: MediaStreamTrack[] = [videoTrack];
     if (audioTracks.length > 0) {
       const mixedAudioTrack = this.audioDestination.stream.getAudioTracks()[0]!;
@@ -867,7 +883,10 @@ export class Panel {
 
     this.recordedChunks = [];
     this.recordedSize = 0;
-    this.mediaRecorder = new MediaRecorder(recordStream, { mimeType });
+    this.mediaRecorder = new MediaRecorder(recordStream, {
+      mimeType,
+      videoBitsPerSecond: RECORDING_VIDEO_BITRATE,
+    });
 
     this.mediaRecorder.ondataavailable = (e) => {
       if (e.data.size > 0) {

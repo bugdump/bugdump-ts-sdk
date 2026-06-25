@@ -26,7 +26,10 @@ export class SessionReplayCollector {
       checkoutEveryNms: CHECKOUT_INTERVAL_MS,
       inlineStylesheet: true,
       inlineImages: false,
-      collectFonts: true,
+      // Web fonts are inlined as base64 and can add hundreds of KB to MBs to the replay.
+      // For bug debugging, layout and content matter far more than the exact typeface, so
+      // replays fall back to system fonts to keep the blob small.
+      collectFonts: false,
       sampling: {
         mousemove: 50,
         mouseInteraction: true,

@@ -71,6 +71,16 @@ export const DEFAULT_MAX_MEDIA_SIZE = 50 * 1024 * 1024; // 50MB fallback
 export const RECORDING_TIMESLICE_MS = 1000;
 export const MAX_RECORDING_DURATION_S = 180; // 3 minutes
 
+// Screen-recording quality caps. Bug-repro footage stays legible well below native
+// resolution/framerate, so we bound capture to keep the file small. Requested as
+// "max" constraints — the browser downscales high-res displays but never upscales.
+// Bitrate is tuned for screen content (mostly-static UI with crisp text), where a
+// motion-grade low bitrate would smear small fonts; paired with contentHint='detail'.
+export const RECORDING_MAX_WIDTH = 1920;
+export const RECORDING_MAX_HEIGHT = 1080;
+export const RECORDING_MAX_FRAMERATE = 15;
+export const RECORDING_VIDEO_BITRATE = 5_000_000; // ~5 Mbps
+
 let attachmentIdCounter = 0;
 
 export function generateAttachmentId(): string {
