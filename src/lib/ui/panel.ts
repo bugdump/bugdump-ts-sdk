@@ -195,32 +195,33 @@ export class Panel {
   }
 
   show(): void {
-    if (!this.sessionReplayAttached && this.sessionReplayCollector) {
-      this.attachSessionReplay();
-    }
     this.visible = true;
     this.elements.root.classList.add('bd-panel--visible');
     this.elements.textarea.focus();
   }
 
-  attachSessionReplay(): void {
-    if (!this.sessionReplayCollector) return;
+  /**
+   * Capture the automatic session replay. Called at submit time (not on panel open) so the
+   * rolling rrweb window covers the whole session up to the moment the user sends — including
+   * anything that happened while the panel was open, such as a native screen recording. rrweb
+   * keeps buffering continuously in the background; this just snapshots the current window.
+   * Idempotent via `sessionReplayAttached` so a retried submit doesn't attach twice.
+   */
+  private captureSessionReplay(): void {
+    if (!this.sessionReplayCollector || this.sessionReplayAttached) return;
 
-    // Always uses rrweb (library-based) regardless of screenRecordingMethod config —
-    // no user permission needed for the automatic session replay capture.
     const events = this.sessionReplayCollector.getSessionReplay();
-    this.sessionReplayCollector.stop();
 
     this.sessionReplayAttached = true;
     // The action collector slices its own buffer by the same rolling window duration as the
     // replay — independently of rrweb's event timestamps — so the actions list survives even
-    // if rrweb produced nothing or session replay is disabled.
-    this.derivedActions = this.actionCollector?.getRecentActions(SESSION_REPLAY_WINDOW_MS) ?? [];
-
-    if (events.length === 0) {
-      this.sessionReplayCollector.start();
-      return;
+    // if rrweb produced nothing or session replay is disabled. Don't clobber actions already
+    // bound to a recording window by the recording stop handlers.
+    if (this.derivedActions.length === 0) {
+      this.derivedActions = this.actionCollector?.getRecentActions(SESSION_REPLAY_WINDOW_MS) ?? [];
     }
+
+    if (events.length === 0) return;
 
     const packer = new ReplayPacker();
     const fitted = trimReplayToBudget(events, this.maxMediaSize, (slice) => packer.size(slice));
@@ -240,8 +241,6 @@ export class Panel {
     } else {
       console.warn('[Bugdump] Session replay dropped: exceeds max size even after trimming. Actions list still attached.');
     }
-
-    this.sessionReplayCollector.start();
   }
 
   private collectActionsForWindow(startTs: number, endTs: number): void {
@@ -261,7 +260,10 @@ export class Panel {
     if (!preserveAttachments) {
       this.clearAttachments();
     }
-    this.restartSessionReplayCollector();
+    // Deliberately do NOT restart the replay collector here. It buffers continuously across
+    // transient hides (e.g. hiding the panel to take a screenshot) so the session replay
+    // captured at submit still spans the whole session. The collector is reset only after a
+    // successful submit, in reset().
   }
 
   private clearAttachments(): void {
@@ -528,6 +530,10 @@ export class Panel {
     } else if (this.recordingArmed) {
       this.discardRecording();
     }
+
+    // Capture the auto session replay now — after any recording has stopped — so the rolling
+    // rrweb window spans the full session up to submission, including the recording window.
+    this.captureSessionReplay();
 
     this.setSubmitting(true);
 

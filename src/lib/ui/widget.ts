@@ -19,6 +19,11 @@ export class Widget {
 
   constructor(options?: { hideButton?: boolean; icon?: string; features?: PanelFeatures; theme?: BugdumpTheme; translations?: BugdumpTranslations }) {
     this.host = document.createElement('bugdump-widget');
+    // Mark the host with rrweb's block class so the session replay never records the widget
+    // itself. The replay now runs continuously while the panel is open, and the panel must
+    // stay out of the recording (it is also a closed shadow root, so its contents are opaque
+    // to rrweb regardless — this is the explicit, defensive guard).
+    this.host.classList.add('bugdump-block');
     this.host.style.cssText = 'all:initial;position:fixed;z-index:2147483647;';
 
     this.shadowRoot = this.host.attachShadow({ mode: 'closed' });
