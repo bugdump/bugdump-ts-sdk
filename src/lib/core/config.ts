@@ -17,6 +17,7 @@ const DEFAULT_FEATURES: Required<BugdumpFeatures> = {
 
 export const DEFAULT_TRANSLATIONS: Required<BugdumpTranslations> = {
   title: 'Send feedback',
+  triggerTitle: 'Send feedback',
   descriptionPlaceholder: 'What\'s on your mind?',
   attachButton: 'Attach',
   screenshotButton: 'Screenshot',
@@ -62,8 +63,15 @@ export function resolveConfig(config: BugdumpConfig): ResolvedBugdumpConfig {
     showReportLink: config.showReportLink ?? false,
     theme: config.theme ?? 'auto',
     icon: config.icon ?? '',
+    bubbleText: config.bubbleText ?? '',
     features: { ...DEFAULT_FEATURES, ...config.features },
-    translations: { ...DEFAULT_TRANSLATIONS, ...config.translations },
+    translations: {
+      ...DEFAULT_TRANSLATIONS,
+      ...config.translations,
+      // A custom panel title doubles as the trigger tooltip unless overridden explicitly
+      triggerTitle:
+        config.translations?.triggerTitle ?? config.translations?.title ?? DEFAULT_TRANSLATIONS.triggerTitle,
+    },
     consoleFilter: config.consoleFilter,
     networkFilter: config.networkFilter,
   };

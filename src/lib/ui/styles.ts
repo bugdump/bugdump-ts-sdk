@@ -13,6 +13,7 @@ export function createStyles(): string {
       --bd-bg: #fffaf0;
       --bd-bg-secondary: #fef9ee;
       --bd-bg-hover: #f0eee9;
+      --bd-input-bg: #ffffff;
       --bd-border: rgba(40, 20, 80, 0.14);
       --bd-border-dashed: rgba(40, 20, 80, 0.22);
       --bd-border-focus: #7c5cf0;
@@ -39,6 +40,7 @@ export function createStyles(): string {
       --bd-bg: #221b35;
       --bd-bg-secondary: #1a0a3a;
       --bd-bg-hover: #2a2046;
+      --bd-input-bg: #1a0a3a;
       --bd-border: rgba(232, 227, 245, 0.14);
       --bd-border-dashed: rgba(232, 227, 245, 0.22);
       --bd-border-focus: #a78bfa;
@@ -60,6 +62,7 @@ export function createStyles(): string {
         --bd-bg: #221b35;
         --bd-bg-secondary: #1a0a3a;
         --bd-bg-hover: #2a2046;
+        --bd-input-bg: #1a0a3a;
         --bd-border: rgba(232, 227, 245, 0.14);
         --bd-border-dashed: rgba(232, 227, 245, 0.22);
         --bd-border-focus: #a78bfa;
@@ -130,6 +133,79 @@ export function createStyles(): string {
 
     .bd-trigger--open svg {
       transition: transform 0.2s;
+    }
+
+    /* Floating teaser bubble next to the trigger button */
+    .bd-bubble {
+      position: fixed;
+      bottom: 28px;
+      right: 88px;
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      padding: 4px 6px 4px 14px;
+      max-width: min(280px, calc(100vw - 130px));
+      background: var(--bd-bg);
+      color: var(--bd-text);
+      border: 1px solid var(--bd-border);
+      border-radius: 999px;
+      box-shadow: 0 6px 20px var(--bd-shadow), 0 2px 6px var(--bd-shadow-light);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      z-index: 2147483646;
+      animation: bd-bubble-in 0.3s ease-out 0.6s both;
+    }
+
+    @keyframes bd-bubble-in {
+      from {
+        opacity: 0;
+        transform: translateY(6px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .bd-bubble__text {
+      border: none;
+      background: none;
+      padding: 4px 0;
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--bd-text);
+      cursor: pointer;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      outline: none;
+    }
+
+    .bd-bubble__close {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 22px;
+      height: 22px;
+      flex-shrink: 0;
+      border: none;
+      background: none;
+      border-radius: 50%;
+      color: var(--bd-text-muted);
+      cursor: pointer;
+      transition: background-color 0.15s, color 0.15s;
+      outline: none;
+    }
+
+    .bd-bubble__close:hover {
+      background: var(--bd-bg-hover);
+      color: var(--bd-text);
+    }
+
+    .bd-bubble__close svg {
+      width: 14px;
+      height: 14px;
+      fill: currentColor;
     }
 
     .bd-panel {
@@ -256,7 +332,7 @@ export function createStyles(): string {
       font-size: 14px;
       line-height: 1.5;
       color: var(--bd-text);
-      background: var(--bd-bg-secondary);
+      background: var(--bd-input-bg);
       outline: none;
       transition: border-color 0.15s, box-shadow 0.15s;
     }
@@ -494,7 +570,7 @@ export function createStyles(): string {
       font-family: inherit;
       font-size: 14px;
       color: var(--bd-text);
-      background: var(--bd-bg-secondary);
+      background: var(--bd-input-bg);
       outline: none;
       transition: border-color 0.15s, box-shadow 0.15s;
     }

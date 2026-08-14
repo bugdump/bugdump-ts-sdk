@@ -6,10 +6,13 @@ import type { BugdumpTheme, BugdumpTranslations, ReportResponse } from '../types
 import type { SessionReplayCollector } from '../collectors/session-replay';
 import type { ActionCollector } from '../collectors/action';
 
+const BUBBLE_DISMISSED_KEY = 'bugdump-bubble-dismissed';
+
 export class Widget {
   private host: HTMLElement;
   private shadowRoot: ShadowRoot;
   private triggerBtn: HTMLButtonElement;
+  private bubble: HTMLDivElement | null = null;
   private panel: Panel;
   private open = false;
   private minimized = false;
@@ -17,7 +20,7 @@ export class Widget {
 
   private onSubmit: ((data: PanelSubmitData) => Promise<ReportResponse>) | null = null;
 
-  constructor(options?: { hideButton?: boolean; icon?: string; features?: PanelFeatures; theme?: BugdumpTheme; translations?: BugdumpTranslations }) {
+  constructor(options?: { hideButton?: boolean; icon?: string; bubbleText?: string; features?: PanelFeatures; theme?: BugdumpTheme; translations?: BugdumpTranslations }) {
     this.host = document.createElement('bugdump-widget');
     // Mark the host with rrweb's block class so the session replay never records the widget
     // itself. The replay now runs continuously while the panel is open, and the panel must
@@ -34,11 +37,19 @@ export class Widget {
     this.shadowRoot.appendChild(style);
 
     this.triggerIconHtml = options?.icon ? resolveIcon(options.icon) : bugIcon();
-    this.triggerBtn = this.createTriggerButton(options?.translations?.title);
+    this.triggerBtn = this.createTriggerButton(
+      options?.translations?.triggerTitle ?? options?.translations?.title,
+    );
     if (options?.hideButton) {
       this.triggerBtn.style.display = 'none';
     }
     this.shadowRoot.appendChild(this.triggerBtn);
+
+    const bubbleText = options?.bubbleText?.trim();
+    if (bubbleText && !options?.hideButton && !isBubbleDismissed()) {
+      this.bubble = this.createBubble(bubbleText);
+      this.shadowRoot.appendChild(this.bubble);
+    }
 
     this.panel = new Panel(this.shadowRoot, options?.features, options?.translations);
     this.shadowRoot.appendChild(this.panel.getElement());
@@ -110,6 +121,7 @@ export class Widget {
     if (this.open) return;
     this.open = true;
 
+    this.removeBubble();
     this.minimized = false;
     this.triggerBtn.classList.add('bd-trigger--open');
     this.triggerBtn.innerHTML = closeIcon();
@@ -155,9 +167,58 @@ export class Widget {
   private createTriggerButton(title?: string): HTMLButtonElement {
     const btn = document.createElement('button');
     btn.className = 'bd-trigger';
-    btn.setAttribute('aria-label', title ?? 'Send feedback');
+    const label = title ?? 'Send feedback';
+    btn.setAttribute('aria-label', label);
+    btn.setAttribute('title', label);
     btn.innerHTML = this.triggerIconHtml;
     btn.addEventListener('click', () => this.toggle());
     return btn;
+  }
+
+  private createBubble(text: string): HTMLDivElement {
+    const bubble = document.createElement('div');
+    bubble.className = 'bd-bubble';
+
+    const textBtn = document.createElement('button');
+    textBtn.className = 'bd-bubble__text';
+    textBtn.textContent = text;
+    textBtn.addEventListener('click', () => this.openPanel());
+
+    const closeBtn = document.createElement('button');
+    closeBtn.className = 'bd-bubble__close';
+    closeBtn.setAttribute('aria-label', 'Dismiss');
+    closeBtn.innerHTML = closeIcon();
+    closeBtn.addEventListener('click', () => {
+      markBubbleDismissed();
+      this.removeBubble();
+    });
+
+    bubble.appendChild(textBtn);
+    bubble.appendChild(closeBtn);
+    return bubble;
+  }
+
+  private removeBubble(): void {
+    if (!this.bubble) return;
+    this.bubble.remove();
+    this.bubble = null;
+  }
+}
+
+// localStorage can throw (privacy mode, disabled storage) — the bubble then
+// simply reappears on the next page load.
+function isBubbleDismissed(): boolean {
+  try {
+    return localStorage.getItem(BUBBLE_DISMISSED_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+function markBubbleDismissed(): void {
+  try {
+    localStorage.setItem(BUBBLE_DISMISSED_KEY, '1');
+  } catch {
+    // ignore
   }
 }

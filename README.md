@@ -85,6 +85,7 @@ const bugdump = Bugdump.init({
 | `hideButton` | `boolean` | `false` | Hide the floating button and trigger the widget programmatically |
 | `showReportLink` | `boolean` | `false` | Show a link to the created report on the success screen with a copy button |
 | `icon` | `string` | `'chat'` | Custom trigger button icon (see [Custom Icon](#custom-icon) below) |
+| `bubbleText` | `string` | — | Show a dismissible teaser bubble next to the floating button (e.g. `"Found a bug?"`). Clicking it opens the widget; dismissing it is remembered in `localStorage`. Ignored when `hideButton` is set |
 | `captureNetworkBodies` | `boolean` | `false` | Include request/response bodies in network logs |
 | `features` | `object` | all `true` | Enable/disable widget features (see below) |
 | `translations` | `object` | English defaults | Override widget UI strings (see below) |
@@ -121,6 +122,7 @@ const bugdump = Bugdump.init({
 | Key | Default | Description |
 |---|---|---|
 | `title` | `Send feedback` | Panel header title and trigger button aria-label |
+| `triggerTitle` | falls back to `title` | Floating button hover tooltip (`title` attribute) and aria-label |
 | `descriptionPlaceholder` | `What's on your mind?` | Textarea placeholder |
 | `attachButton` | `Attach` | File attach button label |
 | `screenshotButton` | `Screenshot` | Screenshot button label |
@@ -259,6 +261,7 @@ Use `data-*` attributes to configure the widget. All attributes are optional exc
   data-api-url="https://api.bugdump.com"
   data-theme="auto"
   data-icon="chat"
+  data-bubble-text="Found a bug?"
   data-hide-button="false"
   data-show-report-link="false"
   data-capture-network-bodies="false"
@@ -281,6 +284,7 @@ Use `data-*` attributes to configure the widget. All attributes are optional exc
 | `data-hide-button` | `hideButton` | `false` | Hide the floating button |
 | `data-show-report-link` | `showReportLink` | `false` | Show a link to the created report on the success screen |
 | `data-icon` | `icon` | `chat` | Custom trigger button icon (predefined name, URL, SVG, or emoji) |
+| `data-bubble-text` | `bubbleText` | — | Dismissible teaser bubble next to the floating button |
 | `data-capture-network-bodies` | `captureNetworkBodies` | `false` | Capture request/response bodies |
 | `data-screenshot` | `features.screenshot` | `true` | Screenshot capture button |
 | `data-screenshot-method` | `features.screenshotMethod` | `screen-capture` | `screen-capture` (getDisplayMedia) or `dom` (html2canvas) |

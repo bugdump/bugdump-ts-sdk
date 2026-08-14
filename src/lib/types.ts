@@ -14,6 +14,7 @@ export type BugdumpTheme = 'light' | 'dark' | 'auto';
 
 export interface BugdumpTranslations {
   title?: string;
+  triggerTitle?: string;
   descriptionPlaceholder?: string;
   attachButton?: string;
   screenshotButton?: string;
@@ -95,6 +96,7 @@ export interface BugdumpConfig {
   showReportLink?: boolean;
   theme?: BugdumpTheme;
   icon?: string;
+  bubbleText?: string;
   features?: BugdumpFeatures;
   translations?: BugdumpTranslations;
   consoleFilter?: ConsoleFilterOptions;

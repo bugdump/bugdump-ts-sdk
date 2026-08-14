@@ -23,6 +23,7 @@ export function runAutoInit(): void {
     const showReportLink = el.getAttribute('data-show-report-link') === 'true';
     const theme = el.getAttribute('data-theme') as 'light' | 'dark' | 'auto' | null;
     const icon = el.getAttribute('data-icon');
+    const bubbleText = el.getAttribute('data-bubble-text');
 
     const features: Record<string, boolean | string> = {};
     if (el.hasAttribute('data-screenshot')) features.screenshot = el.getAttribute('data-screenshot') !== 'false';
@@ -71,6 +72,7 @@ export function runAutoInit(): void {
         ...(showReportLink && { showReportLink }),
         ...(theme && { theme }),
         ...(icon && { icon }),
+        ...(bubbleText && { bubbleText }),
         ...(Object.keys(features).length > 0 && { features }),
         ...(translations && { translations }),
         ...(consoleFilter && { consoleFilter }),
