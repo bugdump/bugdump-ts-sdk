@@ -65,6 +65,10 @@ export class Bugdump {
       filter: resolved.networkFilter,
     });
 
+    // Published before the collectors and the widget start: they patch globals and touch the
+    // DOM, and if either fails the instance must still be reachable so destroy() can unwind it.
+    Bugdump.instance = instance;
+
     if (Bugdump.isBrowser) {
       instance.consoleCollector.start();
       instance.networkCollector.start();
@@ -95,7 +99,6 @@ export class Bugdump {
         instance.startSessionReplay(true);
       });
 
-    Bugdump.instance = instance;
     return instance;
   }
 

@@ -17,6 +17,7 @@ export class Widget {
   private open = false;
   private minimized = false;
   private triggerIconHtml: string;
+  private destroyed = false;
 
   private onSubmit: ((data: PanelSubmitData) => Promise<ReportResponse>) | null = null;
 
@@ -57,7 +58,29 @@ export class Widget {
     this.panel.setOnClose(() => this.close());
     this.panel.setOnMinimize(() => this.minimizePanel());
 
-    document.body.appendChild(this.host);
+    this.mountHost();
+  }
+
+  /**
+   * The embed script can run while the parser is still inside <head> — React 19 hoists an
+   * async <script src> there, and a fast response (localhost, warm cache) lands before the
+   * body is parsed. A missing body means the parser is still running, so DOMContentLoaded
+   * cannot have fired yet. Everything else works on the detached host in the meantime.
+   */
+  private mountHost(): void {
+    if (document.body) {
+      document.body.appendChild(this.host);
+      return;
+    }
+
+    document.addEventListener(
+      'DOMContentLoaded',
+      () => {
+        if (this.destroyed) return;
+        document.body.appendChild(this.host);
+      },
+      { once: true },
+    );
   }
 
   setOnSubmit(handler: (data: PanelSubmitData) => Promise<ReportResponse>): void {
@@ -151,6 +174,7 @@ export class Widget {
   }
 
   destroy(): void {
+    this.destroyed = true;
     this.panel.destroy();
     this.host.remove();
   }
