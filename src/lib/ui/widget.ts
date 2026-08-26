@@ -1,6 +1,7 @@
 import { createStyles } from './styles';
 import { closeIcon, resolveIcon, bugIcon } from './icons';
 import { Panel } from './panel';
+import { containKeyboardEvents } from './panel-utils';
 import type { PanelSubmitData, PanelFeatures } from './panel';
 import type { BugdumpTheme, BugdumpTranslations, ReportResponse } from '../types';
 import type { SessionReplayCollector } from '../collectors/session-replay';
@@ -31,6 +32,7 @@ export class Widget {
     this.host.style.cssText = 'all:initial;position:fixed;z-index:2147483647;';
 
     this.shadowRoot = this.host.attachShadow({ mode: 'closed' });
+    containKeyboardEvents(this.shadowRoot);
     this.applyTheme(options?.theme);
 
     const style = document.createElement('style');

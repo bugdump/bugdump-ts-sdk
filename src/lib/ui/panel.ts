@@ -32,7 +32,7 @@ import { trimReplayToBudget, SESSION_REPLAY_WINDOW_MS } from '../collectors/sess
 import { ReplayPacker } from '../collectors/replay-serializer';
 import type { ActionCollector } from '../collectors/action';
 import { getAnnotationStyles } from './panel-annotation-styles';
-import { delay, loadImage, formatDuration, getSupportedMimeType } from './panel-utils';
+import { delay, loadImage, formatDuration, getSupportedMimeType, containKeyboardEvents } from './panel-utils';
 import {
   MAX_ATTACHMENTS,
   MAX_DESCRIPTION_LENGTH,
@@ -615,6 +615,7 @@ export class Panel {
       'position:fixed;top:0;left:0;width:100%;height:100%;z-index:2147483647;';
 
     const shadow = this.annotationContainer.attachShadow({ mode: 'closed' });
+    containKeyboardEvents(shadow);
     this.annotationStyleEl = document.createElement('style');
     this.annotationStyleEl.textContent = getAnnotationStyles();
     shadow.appendChild(this.annotationStyleEl);
