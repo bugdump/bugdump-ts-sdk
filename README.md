@@ -48,14 +48,20 @@ const bugdump = Bugdump.init({
 ### Manual IIFE (without auto-init)
 
 ```html
+<script>
+  window.bugdump = window.bugdump || function () {
+    (window.bugdump.q = window.bugdump.q || []).push(arguments);
+  };
+</script>
 <script src="https://bugdump.com/sdk/latest.js" async></script>
 <script>
-  // `load` fires only after async scripts have executed, so the SDK is ready here.
-  window.addEventListener('load', () => {
-    Bugdump.init({ apiKey: 'your-api-key' });
-  });
+  bugdump('init', { apiKey: 'your-api-key' });
 </script>
 ```
+
+The three-line stub makes `bugdump(...)` safe to call immediately: until the SDK arrives it queues calls, and when the script loads the SDK replays them in order and replaces the stub with a live dispatcher — so the same `bugdump(...)` calls work before and after load. Without it, an inline `Bugdump.init(...)` would race the `async` download and throw `Bugdump is not defined`.
+
+Any fire-and-forget method can be a command: `bugdump('identify', { email: '...' })`, `bugdump('open', { taskId: 42 })`, `bugdump('setContext', {...})`, plus `reset`, `close`, `identifyTask`, `clearTask`, and `destroy`. Methods that return a value (`getInstance`, `collectTelemetry`, `getConfig`, ...) are not commands — a queued call has nowhere to return to. Call those on `window.Bugdump` once the script has loaded.
 
 ## How the SDK Loads
 
@@ -467,13 +473,20 @@ document.getElementById('my-report-btn')?.addEventListener('click', () => {
 ### Script Tag
 
 ```html
+<script>
+  window.bugdump = window.bugdump || function () {
+    (window.bugdump.q = window.bugdump.q || []).push(arguments);
+  };
+</script>
 <script src="https://bugdump.com/sdk/latest.js" async data-api-key="your-api-key" data-hide-button="true"></script>
 <script>
   document.getElementById('my-report-btn').addEventListener('click', function () {
-    Bugdump.getInstance().open();
+    bugdump('open');
   });
 </script>
 ```
+
+With the queue stub, a click that lands before the SDK has finished downloading is queued and replayed instead of throwing.
 
 ### React example
 
@@ -577,15 +590,19 @@ function App() {
 When using the `<script>` tag, **do not** use the `data-api-key` attribute (which auto-initializes the widget for everyone). Instead, load the script without auto-init and initialize manually after authentication:
 
 ```html
+<script>
+  window.bugdump = window.bugdump || function () {
+    (window.bugdump.q = window.bugdump.q || []).push(arguments);
+  };
+</script>
 <!-- Load the SDK without auto-init (no data-api-key) -->
 <script src="https://bugdump.com/sdk/latest.js" async></script>
 
 <script>
   // Call this after your user has logged in
   function initBugdump(user) {
-    const bugdump = Bugdump.init({ apiKey: 'your-api-key' });
-
-    bugdump.identify({
+    bugdump('init', { apiKey: 'your-api-key' });
+    bugdump('identify', {
       id: user.id,
       name: user.name,
       email: user.email,
@@ -594,7 +611,7 @@ When using the `<script>` tag, **do not** use the `data-api-key` attribute (whic
 
   // Call this on logout
   function onLogout() {
-    Bugdump.getInstance()?.reset();
+    bugdump('reset');
   }
 
   // Example: init after your app confirms the user is authenticated
