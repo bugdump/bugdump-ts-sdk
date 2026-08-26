@@ -69,9 +69,6 @@ export class Bugdump {
       instance.consoleCollector.start();
       instance.networkCollector.start();
       instance.actionCollector.start();
-      if (resolved.features.sessionReplay) {
-        instance.sessionReplayCollector.start();
-      }
     }
 
     instance.mountWidget();
@@ -87,12 +84,15 @@ export class Bugdump {
         instance.widget?.setRemoveBranding(widgetConfig.features.removeBranding);
         instance.widget?.setPortalUrl(widgetConfig.portalUrl);
         instance.widget?.setDashboardUrl(widgetConfig.dashboardUrl);
-        if (!widgetConfig.features.sessionReplay) {
-          instance.sessionReplayCollector.stop();
-        }
+        // Replay starts here rather than alongside the other collectors: rrweb is a separate
+        // chunk now, so gating on the server's answer keeps it off the wire entirely for
+        // accounts whose plan has no session replay. The collector keeps a rolling window,
+        // so starting one round trip later costs nothing that a report would have used.
+        instance.startSessionReplay(widgetConfig.features.sessionReplay);
       })
       .catch(() => {
         console.warn('[Bugdump] Failed to fetch widget config, using defaults.');
+        instance.startSessionReplay(true);
       });
 
     Bugdump.instance = instance;
@@ -205,6 +205,13 @@ export class Bugdump {
 
   isWidgetOpen(): boolean {
     return this.state.widgetOpen;
+  }
+
+  /** Starts the rolling replay recorder when both the local config and the plan allow it. */
+  private startSessionReplay(allowedByPlan: boolean): void {
+    if (!Bugdump.isBrowser) return;
+    if (!this.state.config?.features.sessionReplay || !allowedByPlan) return;
+    void this.sessionReplayCollector.start();
   }
 
   private mountWidget(): void {

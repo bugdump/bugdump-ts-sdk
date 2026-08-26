@@ -275,9 +275,12 @@ export class Panel {
   }
 
   private restartSessionReplayCollector(): void {
-    if (!this.sessionReplayCollector) return;
+    // Restart only a collector that is actually running. When the plan (or config) has
+    // session replay off the collector was never started, and restarting here would both
+    // download the replay chunk and begin recording against that decision.
+    if (!this.sessionReplayCollector?.isActive) return;
     this.sessionReplayCollector.stop();
-    this.sessionReplayCollector.start();
+    void this.sessionReplayCollector.start();
   }
 
   minimize(): void {

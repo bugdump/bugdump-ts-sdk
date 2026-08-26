@@ -1,5 +1,5 @@
-import { record } from '@rrweb/record';
 import type { eventWithTime, listenerHandler } from '@rrweb/types';
+import { loadReplayChunk, replayChunk } from './replay-chunk';
 
 export const SESSION_REPLAY_WINDOW_MS = 180_000;
 const CHECKOUT_INTERVAL_MS = 60_000;
@@ -13,10 +13,17 @@ export class SessionReplayCollector {
   private stopFn: listenerHandler | null = null;
   private active = false;
   private recordingStartIndex: number | null = null;
+  // Bumped by every start/stop so a chunk load that resolves after the collector was
+  // stopped — or restarted — cannot attach a second recorder.
+  private generation = 0;
 
-  start(): void {
+  async start(): Promise<void> {
     if (this.active) return;
     this.active = true;
+
+    const generation = ++this.generation;
+    const { record } = await loadReplayChunk();
+    if (this.generation !== generation) return;
 
     const stop = record({
       emit: (event: eventWithTime) => {
@@ -63,6 +70,7 @@ export class SessionReplayCollector {
     if (!this.active) return;
     this.active = false;
     this.recordingStartIndex = null;
+    this.generation++;
 
     if (this.stopFn) {
       this.stopFn();
@@ -77,9 +85,9 @@ export class SessionReplayCollector {
   startRecording(): void {
     if (!this.active || this.recordingStartIndex !== null) return;
 
-    if (record.takeFullSnapshot) {
-      record.takeFullSnapshot();
-    }
+    const chunk = replayChunk();
+    if (!chunk) return;
+    chunk.record.takeFullSnapshot?.();
 
     this.recordingStartIndex = this.findLastSnapshotStart();
   }
@@ -102,6 +110,10 @@ export class SessionReplayCollector {
     return this.recordingStartIndex !== null;
   }
 
+  get isActive(): boolean {
+    return this.active;
+  }
+
   /**
    * Get the rolling session replay window (~last 60s).
    * Does NOT take a new snapshot or modify the buffer.
@@ -122,9 +134,7 @@ export class SessionReplayCollector {
 
   private schedulePostLoadSnapshot(): void {
     const takeSnapshot = () => {
-      if (this.active && record.takeFullSnapshot) {
-        record.takeFullSnapshot();
-      }
+      if (this.active) replayChunk()?.record.takeFullSnapshot?.();
     };
 
     if (document.readyState === 'complete') {

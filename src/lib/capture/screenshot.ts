@@ -1,4 +1,10 @@
-import html2canvas from 'html2canvas-pro';
+import { HTML2CANVAS_CHUNK, loadChunk } from '../core/chunk-loader';
+
+type Html2CanvasChunk = { html2canvas: typeof import('html2canvas-pro').default };
+
+// html2canvas-pro is over half the SDK's bundled weight and is only reached when someone
+// actually takes a DOM screenshot, so it is fetched on first use rather than at load.
+const loadHtml2Canvas = () => loadChunk<Html2CanvasChunk>(HTML2CANVAS_CHUNK);
 
 const DEFAULT_QUALITY = 1;
 const DEFAULT_MIME_TYPE = 'image/jpeg';
@@ -98,6 +104,8 @@ export async function captureScreenshot(
 
   const width = window.innerWidth;
   const height = window.innerHeight;
+
+  const { html2canvas } = await loadHtml2Canvas();
 
   const canvas = await html2canvas(target, {
     width,

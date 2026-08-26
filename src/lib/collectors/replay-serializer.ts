@@ -1,4 +1,4 @@
-import { pack } from '@rrweb/packer';
+import { replayChunk } from './replay-chunk';
 import type { eventWithTime } from '@rrweb/types';
 
 /**
@@ -19,7 +19,10 @@ export class ReplayPacker {
   private packEvent(event: eventWithTime): string {
     let packed = this.cache.get(event);
     if (packed === undefined) {
-      packed = pack(event);
+      // Safe by construction: an event to pack means rrweb ran, so its chunk has loaded.
+      const chunk = replayChunk();
+      if (!chunk) throw new Error('Bugdump: replay chunk is not loaded.');
+      packed = chunk.pack(event);
       this.cache.set(event, packed);
     }
     return packed;

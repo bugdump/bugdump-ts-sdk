@@ -1,7 +1,14 @@
-import { describe, it, expect } from 'vitest';
+import { beforeAll, describe, it, expect } from 'vitest';
 import { pack } from '@rrweb/packer';
 import type { eventWithTime } from '@rrweb/types';
+import { loadReplayChunk } from './replay-chunk';
 import { ReplayPacker } from './replay-serializer';
+
+// The packer reads `pack` from the lazily loaded replay chunk. In the app that chunk is
+// always loaded by the time anything is packed, because only rrweb produces events to pack.
+beforeAll(async () => {
+  await loadReplayChunk();
+});
 
 function metaEvent(ts: number): eventWithTime {
   return { type: 4, data: { href: 'https://x', width: 100, height: 100 }, timestamp: ts } as eventWithTime;

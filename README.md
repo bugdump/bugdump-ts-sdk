@@ -20,8 +20,10 @@ Official TypeScript SDK for [Bugdump](https://bugdump.com) - embed a bug reporti
 Drop a single line into your HTML — the widget initializes automatically:
 
 ```html
-<script src="https://bugdump.com/sdk/latest.js" data-api-key="your-api-key"></script>
+<script src="https://bugdump.com/sdk/latest.js" async data-api-key="your-api-key"></script>
 ```
+
+The `async` attribute keeps the SDK from blocking page parsing or `DOMContentLoaded`; the widget initializes as soon as the script arrives.
 
 That's it. A floating bug report button will appear on your page.
 
@@ -46,9 +48,12 @@ const bugdump = Bugdump.init({
 ### Manual IIFE (without auto-init)
 
 ```html
-<script src="https://bugdump.com/sdk/latest.js"></script>
+<script src="https://bugdump.com/sdk/latest.js" async></script>
 <script>
-  Bugdump.init({ apiKey: 'your-api-key' });
+  // `load` fires only after async scripts have executed, so the SDK is ready here.
+  window.addEventListener('load', () => {
+    Bugdump.init({ apiKey: 'your-api-key' });
+  });
 </script>
 ```
 
@@ -197,6 +202,7 @@ The script-tag version accepts the same filters as JSON on `data-console-filter`
 ```html
 <script
   src="https://bugdump.com/sdk/latest.js"
+  async
   data-api-key="your-api-key"
   data-console-filter='{"levels":["warn","error"],"exclude":["[HMR]","[Vue warn]"]}'
   data-network-filter='{"excludeUrls":["segment.io","/health"],"excludeMethods":["OPTIONS"]}'
@@ -257,6 +263,7 @@ Use `data-*` attributes to configure the widget. All attributes are optional exc
 ```html
 <script
   src="https://bugdump.com/sdk/latest.js"
+  async
   data-api-key="your-api-key"
   data-api-url="https://api.bugdump.com"
   data-theme="auto"
@@ -328,7 +335,7 @@ Bugdump.init({ apiKey: '...', icon: '🐛' });
 Or via script tag:
 
 ```html
-<script src="https://bugdump.com/sdk/latest.js" data-api-key="your-api-key" data-icon="feedback"></script>
+<script src="https://bugdump.com/sdk/latest.js" async data-api-key="your-api-key" data-icon="feedback"></script>
 ```
 
 #### Predefined Icons
@@ -363,7 +370,7 @@ Bugdump.init({
 Or via script tag:
 
 ```html
-<script src="https://bugdump.com/sdk/latest.js" data-api-key="your-api-key" data-show-report-link="true"></script>
+<script src="https://bugdump.com/sdk/latest.js" async data-api-key="your-api-key" data-show-report-link="true"></script>
 ```
 
 The link points to your project dashboard (e.g. `https://app.bugdump.com/projects/my-project/reports/{id}`). The dashboard URL is fetched automatically from the server — no additional configuration needed.
@@ -394,7 +401,7 @@ const bugdump = Bugdump.init({
 ### Script Tag
 
 ```html
-<script src="https://bugdump.com/sdk/latest.js" data-api-key="your-api-key" data-allow-task-attach="true"></script>
+<script src="https://bugdump.com/sdk/latest.js" async data-api-key="your-api-key" data-allow-task-attach="true"></script>
 ```
 
 ### Pre-filling the Task ID Programmatically
@@ -441,7 +448,7 @@ document.getElementById('my-report-btn')?.addEventListener('click', () => {
 ### Script Tag
 
 ```html
-<script src="https://bugdump.com/sdk/latest.js" data-api-key="your-api-key" data-hide-button="true"></script>
+<script src="https://bugdump.com/sdk/latest.js" async data-api-key="your-api-key" data-hide-button="true"></script>
 <script>
   document.getElementById('my-report-btn').addEventListener('click', function () {
     Bugdump.getInstance().open();
@@ -552,7 +559,7 @@ When using the `<script>` tag, **do not** use the `data-api-key` attribute (whic
 
 ```html
 <!-- Load the SDK without auto-init (no data-api-key) -->
-<script src="https://bugdump.com/sdk/latest.js"></script>
+<script src="https://bugdump.com/sdk/latest.js" async></script>
 
 <script>
   // Call this after your user has logged in
