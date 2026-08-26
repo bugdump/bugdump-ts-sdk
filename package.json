@@ -1,6 +1,6 @@
 {
   "name": "@bugdump/sdk",
-  "version": "0.0.31",
+  "version": "0.0.32",
   "description": "Official Bugdump SDK - Embed bug reporting widget on your website",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
@@ -41,7 +41,9 @@
     "url": "https://github.com/bugdump-app/bugdump-ts-sdk/issues"
   },
   "homepage": "https://bugdump.com",
-  "sideEffects": false,
+  "sideEffects": [
+    "./dist/index.global.js"
+  ],
   "dependencies": {
     "@rrweb/packer": "2.0.1",
     "@rrweb/record": "2.0.1",
