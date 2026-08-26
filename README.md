@@ -57,6 +57,25 @@ const bugdump = Bugdump.init({
 </script>
 ```
 
+## How the SDK Loads
+
+The script tag build loads in two stages, so a page only downloads what it actually uses.
+
+**The entry** (`latest.js`, ~118 KB / ~28 KB gzipped) carries the widget, the console/network/action collectors, and report submission. Every page pays this.
+
+**Two optional chunks** are fetched on demand and never touch a page that does not need them:
+
+| Chunk | Size | Fetched when |
+| --- | --- | --- |
+| `bugdump-html2canvas.js` | ~250 KB | Someone takes a DOM screenshot — including the automatic fallback when a `screen-capture` permission prompt is denied |
+| `bugdump-replay.js` | ~82 KB | Session replay is enabled for your project *and* allowed by your plan |
+
+Since `screenshotMethod` defaults to `screen-capture`, most screenshots never load html2canvas at all.
+
+**If you self-host or proxy the SDK**, copy all three files and keep them in the same directory — the entry resolves its chunks relative to its own URL. Serving `latest.js` alone leaves screenshots and session replay broken while the rest of the widget appears to work. You may rename the entry; the chunk filenames must stay as they are.
+
+A strict Content-Security-Policy needs the SDK's origin in `script-src` for the chunk requests, not just for the entry.
+
 ## Configuration
 
 ### npm
