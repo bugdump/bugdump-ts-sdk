@@ -7,46 +7,46 @@ export function createStyles(): string {
     }
 
     :host {
-      --bd-primary: #7c5cf0;
-      --bd-primary-hover: #6a48e0;
+      --bd-primary: #6d5ef5;
+      --bd-primary-hover: #5a4bdc;
       --bd-primary-text: #ffffff;
-      --bd-bg: #fffaf0;
-      --bd-bg-secondary: #fef9ee;
-      --bd-bg-hover: #f0eee9;
+      --bd-bg: #ffffff;
+      --bd-bg-secondary: #f6f7f9;
+      --bd-bg-hover: #eceef2;
       --bd-input-bg: #ffffff;
-      --bd-border: rgba(40, 20, 80, 0.14);
-      --bd-border-dashed: rgba(40, 20, 80, 0.22);
-      --bd-border-focus: #7c5cf0;
-      --bd-text: #1a0a3a;
-      --bd-text-secondary: #5a4a7a;
-      --bd-text-muted: #9d8fb0;
+      --bd-border: rgba(16, 19, 25, 0.08);
+      --bd-border-dashed: rgba(16, 19, 25, 0.16);
+      --bd-border-focus: #6d5ef5;
+      --bd-text: #101319;
+      --bd-text-secondary: #5c6270;
+      --bd-text-muted: #959bab;
       --bd-danger: #b1300f;
       --bd-danger-hover: #8f2509;
-      --bd-shadow: rgba(40, 20, 80, 0.18);
-      --bd-shadow-light: rgba(40, 20, 80, 0.08);
+      --bd-shadow: rgba(16, 19, 25, 0.1);
+      --bd-shadow-light: rgba(16, 19, 25, 0.04);
       --bd-error-bg: #fdeee9;
       --bd-error-text: #b1300f;
       --bd-error-border: rgba(177, 48, 15, 0.3);
-      --bd-mint: #bbf3d3;
-      --bd-lavender: #d8c9ff;
-      --bd-peach: #ffd3a8;
-      --bd-tone-text: #1a0a3a;
+      --bd-mint: #dcf3e7;
+      --bd-lavender: #e9e5ff;
+      --bd-peach: #ffe9d6;
+      --bd-tone-text: #101319;
     }
 
     :host(.bd-theme-dark) {
       --bd-primary: #a78bfa;
       --bd-primary-hover: #b9a4fb;
-      --bd-primary-text: #1a0a3a;
-      --bd-bg: #221b35;
-      --bd-bg-secondary: #1a0a3a;
-      --bd-bg-hover: #2a2046;
-      --bd-input-bg: #1a0a3a;
-      --bd-border: rgba(232, 227, 245, 0.14);
-      --bd-border-dashed: rgba(232, 227, 245, 0.22);
+      --bd-primary-text: #101319;
+      --bd-bg: #171922;
+      --bd-bg-secondary: #101319;
+      --bd-bg-hover: #1f2230;
+      --bd-input-bg: #101319;
+      --bd-border: rgba(230, 232, 238, 0.1);
+      --bd-border-dashed: rgba(230, 232, 238, 0.18);
       --bd-border-focus: #a78bfa;
-      --bd-text: #e8e3f5;
-      --bd-text-secondary: #9d8fb0;
-      --bd-text-muted: #6b5e85;
+      --bd-text: #e6e8ee;
+      --bd-text-secondary: #8b91a1;
+      --bd-text-muted: #666c7a;
       --bd-shadow: rgba(0, 0, 0, 0.45);
       --bd-shadow-light: rgba(0, 0, 0, 0.25);
       --bd-error-bg: #3a1414;
@@ -58,17 +58,17 @@ export function createStyles(): string {
       :host(.bd-theme-auto) {
         --bd-primary: #a78bfa;
         --bd-primary-hover: #b9a4fb;
-        --bd-primary-text: #1a0a3a;
-        --bd-bg: #221b35;
-        --bd-bg-secondary: #1a0a3a;
-        --bd-bg-hover: #2a2046;
-        --bd-input-bg: #1a0a3a;
-        --bd-border: rgba(232, 227, 245, 0.14);
-        --bd-border-dashed: rgba(232, 227, 245, 0.22);
+        --bd-primary-text: #101319;
+        --bd-bg: #171922;
+        --bd-bg-secondary: #101319;
+        --bd-bg-hover: #1f2230;
+        --bd-input-bg: #101319;
+        --bd-border: rgba(230, 232, 238, 0.1);
+        --bd-border-dashed: rgba(230, 232, 238, 0.18);
         --bd-border-focus: #a78bfa;
-        --bd-text: #e8e3f5;
-        --bd-text-secondary: #9d8fb0;
-        --bd-text-muted: #6b5e85;
+        --bd-text: #e6e8ee;
+        --bd-text-secondary: #8b91a1;
+        --bd-text-muted: #666c7a;
         --bd-shadow: rgba(0, 0, 0, 0.45);
         --bd-shadow-light: rgba(0, 0, 0, 0.25);
         --bd-error-bg: #3a1414;
@@ -243,7 +243,7 @@ export function createStyles(): string {
       align-items: center;
       justify-content: space-between;
       padding: 14px 18px;
-      border-bottom: 1px dashed var(--bd-border-dashed);
+      border-bottom: 1px solid var(--bd-border);
       background: var(--bd-bg-secondary);
     }
 
@@ -587,7 +587,7 @@ export function createStyles(): string {
 
     .bd-panel__footer {
       padding: 12px 20px;
-      border-top: 1px dashed var(--bd-border-dashed);
+      border-top: 1px solid var(--bd-border);
       display: flex;
       align-items: center;
       gap: 12px;
@@ -713,7 +713,7 @@ export function createStyles(): string {
 
     .bd-success-actions {
       padding: 12px 20px;
-      border-top: 1px dashed var(--bd-border-dashed);
+      border-top: 1px solid var(--bd-border);
       display: flex;
       align-items: center;
       justify-content: flex-end;

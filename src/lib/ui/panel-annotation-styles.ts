@@ -1,17 +1,17 @@
 export function getAnnotationStyles(): string {
   return `
     :host {
-      --bd-primary: #7c5cf0;
-      --bd-primary-hover: #6a48e0;
-      --bd-bg: #fffaf0;
-      --bd-bg-secondary: #fef9ee;
-      --bd-bg-hover: #f0eee9;
-      --bd-border: rgba(40, 20, 80, 0.14);
-      --bd-text: #1a0a3a;
-      --bd-text-secondary: #5a4a7a;
+      --bd-primary: #6d5ef5;
+      --bd-primary-hover: #5a4bdc;
+      --bd-bg: #ffffff;
+      --bd-bg-secondary: #f6f7f9;
+      --bd-bg-hover: #eceef2;
+      --bd-border: rgba(16, 19, 25, 0.08);
+      --bd-text: #101319;
+      --bd-text-secondary: #5c6270;
       --bd-danger: #b1300f;
-      --bd-shadow: rgba(40, 20, 80, 0.18);
-      --bd-shadow-light: rgba(40, 20, 80, 0.08);
+      --bd-shadow: rgba(16, 19, 25, 0.1);
+      --bd-shadow-light: rgba(16, 19, 25, 0.04);
       --bd-error-bg: #fdeee9;
     }
 
@@ -19,12 +19,12 @@ export function getAnnotationStyles(): string {
       :host {
         --bd-primary: #a78bfa;
         --bd-primary-hover: #b9a4fb;
-        --bd-bg: #221b35;
-        --bd-bg-secondary: #1a0a3a;
-        --bd-bg-hover: #2a2046;
-        --bd-border: rgba(232, 227, 245, 0.14);
-        --bd-text: #e8e3f5;
-        --bd-text-secondary: #9d8fb0;
+        --bd-bg: #171922;
+        --bd-bg-secondary: #101319;
+        --bd-bg-hover: #1f2230;
+        --bd-border: rgba(230, 232, 238, 0.1);
+        --bd-text: #e6e8ee;
+        --bd-text-secondary: #8b91a1;
         --bd-shadow: rgba(0, 0, 0, 0.45);
         --bd-shadow-light: rgba(0, 0, 0, 0.25);
         --bd-error-bg: #3a1414;
