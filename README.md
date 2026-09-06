@@ -49,9 +49,11 @@ const bugdump = Bugdump.init({
 
 ```html
 <script>
-  window.bugdump = window.bugdump || function () {
-    (window.bugdump.q = window.bugdump.q || []).push(arguments);
-  };
+  window.bugdump =
+    window.bugdump ||
+    function () {
+      (window.bugdump.q = window.bugdump.q || []).push(arguments);
+    };
 </script>
 <script src="https://bugdump.com/sdk/latest.js" async></script>
 <script>
@@ -71,10 +73,10 @@ The script tag build loads in two stages, so a page only downloads what it actua
 
 **Two optional chunks** are fetched on demand and never touch a page that does not need them:
 
-| Chunk | Size | Fetched when |
-| --- | --- | --- |
+| Chunk                    | Size    | Fetched when                                                                                                          |
+| ------------------------ | ------- | --------------------------------------------------------------------------------------------------------------------- |
 | `bugdump-html2canvas.js` | ~250 KB | Someone takes a DOM screenshot — including the automatic fallback when a `screen-capture` permission prompt is denied |
-| `bugdump-replay.js` | ~82 KB | Session replay is enabled for your project *and* allowed by your plan |
+| `bugdump-replay.js`      | ~82 KB  | Session replay is enabled for your project _and_ allowed by your plan                                                 |
 
 Since `screenshotMethod` defaults to `screen-capture`, most screenshots never load html2canvas at all.
 
@@ -89,48 +91,50 @@ A strict Content-Security-Policy needs the SDK's origin in `script-src` for the 
 ```typescript
 const bugdump = Bugdump.init({
   apiKey: 'your-api-key',
-  endpoint: 'https://api.bugdump.com',  // Custom API endpoint
-  theme: 'auto',                         // Widget color theme
-  icon: 'chat',                           // Trigger button icon
-  hideButton: false,                      // Hide the floating button
-  showReportLink: false,                  // Show report link after submission
-  captureNetworkBodies: false,            // Capture request/response bodies
+  endpoint: 'https://api.bugdump.com', // Custom API endpoint
+  theme: 'auto', // Widget color theme
+  position: 'bottom-right', // Corner the widget is anchored to
+  icon: 'chat', // Trigger button icon
+  hideButton: false, // Hide the floating button
+  showReportLink: false, // Show report link after submission
+  captureNetworkBodies: false, // Capture request/response bodies
   features: {
-    screenshot: true,                     // Screenshot capture
-    screenshotMethod: 'screen-capture',   // 'screen-capture' (getDisplayMedia) or 'dom' (html2canvas)
-    screenRecording: true,                // Screen recording
+    screenshot: true, // Screenshot capture
+    screenshotMethod: 'screen-capture', // 'screen-capture' (getDisplayMedia) or 'dom' (html2canvas)
+    screenRecording: true, // Screen recording
     screenRecordingMethod: 'screen-capture', // 'screen-capture' (getDisplayMedia) or 'dom' (rrweb)
-    sessionReplay: true,                  // Session replay collection
-    attachments: true,                    // File attachments
-    allowTaskAttach: false,               // Show "Attach to task" toggle
+    sessionReplay: true, // Session replay collection
+    attachments: true, // File attachments
+    allowTaskAttach: false, // Show "Attach to task" toggle
   },
 });
 ```
 
-| Option | Type | Default | Description |
-|---|---|---|---|
-| `apiKey` | `string` | — | **Required.** Your Bugdump API key |
-| `endpoint` | `string` | `https://api.bugdump.com` | Custom API endpoint |
-| `theme` | `'light' \| 'dark' \| 'auto'` | `'auto'` | Widget color theme. `auto` follows the user's OS preference |
-| `hideButton` | `boolean` | `false` | Hide the floating button and trigger the widget programmatically |
-| `showReportLink` | `boolean` | `false` | Show a link to the created report on the success screen with a copy button |
-| `icon` | `string` | `'chat'` | Custom trigger button icon (see [Custom Icon](#custom-icon) below) |
-| `bubbleText` | `string` | — | Show a dismissible teaser bubble next to the floating button (e.g. `"Found a bug?"`). Clicking it opens the widget; dismissing it is remembered in `localStorage`. Ignored when `hideButton` is set |
-| `captureNetworkBodies` | `boolean` | `false` | Include request/response bodies in network logs |
-| `features` | `object` | all `true` | Enable/disable widget features (see below) |
-| `translations` | `object` | English defaults | Override widget UI strings (see below) |
+| Option                 | Type                          | Default                   | Description                                                                                                                                                                                         |
+| ---------------------- | ----------------------------- | ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `apiKey`               | `string`                      | —                         | **Required.** Your Bugdump API key                                                                                                                                                                  |
+| `endpoint`             | `string`                      | `https://api.bugdump.com` | Custom API endpoint                                                                                                                                                                                 |
+| `theme`                | `'light' \| 'dark' \| 'auto'` | `'auto'`                  | Widget color theme. `auto` follows the user's OS preference                                                                                                                                         |
+| `position`             | `'bottom-right' \| 'bottom-left'` | `'bottom-right'`      | Corner the floating button and panel are anchored to                                                                                                                                                |
+| `hideButton`           | `boolean`                     | `false`                   | Hide the floating button and trigger the widget programmatically                                                                                                                                    |
+| `showReportLink`       | `boolean`                     | `false`                   | Show a link to the created report on the success screen with a copy button                                                                                                                          |
+| `icon`                 | `string`                      | `'chat'`                  | Custom trigger button icon (see [Custom Icon](#custom-icon) below)                                                                                                                                  |
+| `bubbleText`           | `string`                      | —                         | Show a dismissible teaser bubble next to the floating button (e.g. `"Found a bug?"`). Clicking it opens the widget; dismissing it is remembered in `localStorage`. Ignored when `hideButton` is set |
+| `captureNetworkBodies` | `boolean`                     | `false`                   | Include request/response bodies in network logs                                                                                                                                                     |
+| `features`             | `object`                      | all `true`                | Enable/disable widget features (see below)                                                                                                                                                          |
+| `translations`         | `object`                      | English defaults          | Override widget UI strings (see below)                                                                                                                                                              |
 
 #### Feature Toggles
 
-| Feature | Default | Description |
-|---|---|---|
-| `features.screenshot` | `true` | Screenshot capture button |
-| `features.screenshotMethod` | `'screen-capture'` | `'screen-capture'` (default) uses getDisplayMedia (pixel-perfect, shows permission dialog, falls back to DOM if denied). `'dom'` uses html2canvas (no prompt) |
-| `features.screenRecording` | `true` | Screen recording button |
+| Feature                          | Default            | Description                                                                                                                                                        |
+| -------------------------------- | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `features.screenshot`            | `true`             | Screenshot capture button                                                                                                                                          |
+| `features.screenshotMethod`      | `'screen-capture'` | `'screen-capture'` (default) uses getDisplayMedia (pixel-perfect, shows permission dialog, falls back to DOM if denied). `'dom'` uses html2canvas (no prompt)      |
+| `features.screenRecording`       | `true`             | Screen recording button                                                                                                                                            |
 | `features.screenRecordingMethod` | `'screen-capture'` | `'screen-capture'` (default) uses getDisplayMedia (pixel-perfect, shows permission dialog, falls back to DOM if denied). `'dom'` uses rrweb (no prompt, DOM-based) |
-| `features.sessionReplay` | `true` | Background session replay collection |
-| `features.attachments` | `true` | File attachment button |
-| `features.allowTaskAttach` | `false` | Show an "Attach to task" toggle so reporters can associate the report with an existing task by its public ID |
+| `features.sessionReplay`         | `true`             | Background session replay collection                                                                                                                               |
+| `features.attachments`           | `true`             | File attachment button                                                                                                                                             |
+| `features.allowTaskAttach`       | `false`            | Show an "Attach to task" toggle so reporters can associate the report with an existing task by its public ID                                                       |
 
 #### Translations
 
@@ -149,48 +153,48 @@ const bugdump = Bugdump.init({
 });
 ```
 
-| Key | Default | Description |
-|---|---|---|
-| `title` | `Send feedback` | Panel header title and trigger button aria-label |
-| `triggerTitle` | falls back to `title` | Floating button hover tooltip (`title` attribute) and aria-label |
-| `descriptionPlaceholder` | `What's on your mind?` | Textarea placeholder |
-| `attachButton` | `Attach` | File attach button label |
-| `screenshotButton` | `Screenshot` | Screenshot button label |
-| `recordButton` | `Record` | Screen recording button label |
-| `sendButton` | `Send` | Submit button label |
-| `reporterToggle` | `Reporter info` | Reporter section toggle label |
-| `namePlaceholder` | `Your name` | Name input placeholder |
-| `emailPlaceholder` | `Your email` | Email input placeholder |
-| `taskAttachToggle` | `Attach to task` | Label for the toggle that reveals the task ID field (shown when `allowTaskAttach` is enabled) |
-| `taskIdPlaceholder` | `Task ID` | Placeholder for the task ID input (shown when `allowTaskAttach` is enabled) |
-| `capturing` | `Capturing...` | Screenshot loading state |
-| `startRecording` | `Record` | Start recording button label in the recording bar |
-| `stop` | `Stop` | Recording stop button label |
-| `sending` | `Sending...` | Submit loading state |
-| `successTitle` | `Feedback sent!` | Success message title |
-| `successSubtitle` | `Thank you for your feedback.` | Success message subtitle |
-| `errorMessage` | `Something went wrong. Please try again.` | Error message |
-| `emptyDescriptionMessage` | `Please describe what happened before sending.` | Validation message shown when submitting with an empty description |
-| `closeButton` | `Close` | Close button aria-label |
-| `submitAnother` | `Submit another` | Button on the success screen to file another report |
-| `arrowTool` | `Arrow` | Annotation arrow tool tooltip |
-| `rectangleTool` | `Rectangle` | Annotation rectangle tool tooltip |
-| `drawTool` | `Draw` | Annotation freehand tool tooltip |
-| `textTool` | `Text` | Annotation text tool tooltip |
-| `blurTool` | `Blur` | Annotation blur tool tooltip |
-| `undo` | `Undo` | Annotation undo button tooltip |
-| `cancel` | `Cancel` | Annotation cancel button label |
-| `done` | `Done` | Annotation confirm button label |
-| `badgeScreenshot` | `Screenshot` | Badge label shown on screenshot attachments |
-| `badgeRecording` | `Recording` | Badge label shown on screen recording attachments |
-| `badgeReplay` | `Replay` | Badge label shown on session replay attachments |
-| `badgeVoiceNote` | `Voice note` | Badge label shown on voice note attachments |
-| `copyLink` | `Copy link` | Copy report link button label (shown when `showReportLink` is enabled) |
-| `copied` | `Copied!` | Feedback text after copying the report link |
+| Key                       | Default                                         | Description                                                                                   |
+| ------------------------- | ----------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| `title`                   | `Send feedback`                                 | Panel header title and trigger button aria-label                                              |
+| `triggerTitle`            | falls back to `title`                           | Floating button hover tooltip (`title` attribute) and aria-label                              |
+| `descriptionPlaceholder`  | `What's on your mind?`                          | Textarea placeholder                                                                          |
+| `attachButton`            | `Attach`                                        | File attach button label                                                                      |
+| `screenshotButton`        | `Screenshot`                                    | Screenshot button label                                                                       |
+| `recordButton`            | `Record`                                        | Screen recording button label                                                                 |
+| `sendButton`              | `Send`                                          | Submit button label                                                                           |
+| `reporterToggle`          | `Reporter info`                                 | Reporter section toggle label                                                                 |
+| `namePlaceholder`         | `Your name`                                     | Name input placeholder                                                                        |
+| `emailPlaceholder`        | `Your email`                                    | Email input placeholder                                                                       |
+| `taskAttachToggle`        | `Attach to task`                                | Label for the toggle that reveals the task ID field (shown when `allowTaskAttach` is enabled) |
+| `taskIdPlaceholder`       | `Task ID`                                       | Placeholder for the task ID input (shown when `allowTaskAttach` is enabled)                   |
+| `capturing`               | `Capturing...`                                  | Screenshot loading state                                                                      |
+| `startRecording`          | `Record`                                        | Start recording button label in the recording bar                                             |
+| `stop`                    | `Stop`                                          | Recording stop button label                                                                   |
+| `sending`                 | `Sending...`                                    | Submit loading state                                                                          |
+| `successTitle`            | `Feedback sent!`                                | Success message title                                                                         |
+| `successSubtitle`         | `Thank you for your feedback.`                  | Success message subtitle                                                                      |
+| `errorMessage`            | `Something went wrong. Please try again.`       | Error message                                                                                 |
+| `emptyDescriptionMessage` | `Please describe what happened before sending.` | Validation message shown when submitting with an empty description                            |
+| `closeButton`             | `Close`                                         | Close button aria-label                                                                       |
+| `submitAnother`           | `Submit another`                                | Button on the success screen to file another report                                           |
+| `arrowTool`               | `Arrow`                                         | Annotation arrow tool tooltip                                                                 |
+| `rectangleTool`           | `Rectangle`                                     | Annotation rectangle tool tooltip                                                             |
+| `drawTool`                | `Draw`                                          | Annotation freehand tool tooltip                                                              |
+| `textTool`                | `Text`                                          | Annotation text tool tooltip                                                                  |
+| `blurTool`                | `Blur`                                          | Annotation blur tool tooltip                                                                  |
+| `undo`                    | `Undo`                                          | Annotation undo button tooltip                                                                |
+| `cancel`                  | `Cancel`                                        | Annotation cancel button label                                                                |
+| `done`                    | `Done`                                          | Annotation confirm button label                                                               |
+| `badgeScreenshot`         | `Screenshot`                                    | Badge label shown on screenshot attachments                                                   |
+| `badgeRecording`          | `Recording`                                     | Badge label shown on screen recording attachments                                             |
+| `badgeReplay`             | `Replay`                                        | Badge label shown on session replay attachments                                               |
+| `badgeVoiceNote`          | `Voice note`                                    | Badge label shown on voice note attachments                                                   |
+| `copyLink`                | `Copy link`                                     | Copy report link button label (shown when `showReportLink` is enabled)                        |
+| `copied`                  | `Copied!`                                       | Feedback text after copying the report link                                                   |
 
 ## Filtering Noise
 
-Embedding the widget on pages with chatty third-party scripts (analytics, feature-flag pollers, health checks) means every report ships a lot of noise. Use `consoleFilter` and `networkFilter` to drop entries *before* they enter the rolling buffers — so the useful ones don't get evicted, and sensitive third-party traffic never leaves the browser.
+Embedding the widget on pages with chatty third-party scripts (analytics, feature-flag pollers, health checks) means every report ships a lot of noise. Use `consoleFilter` and `networkFilter` to drop entries _before_ they enter the rolling buffers — so the useful ones don't get evicted, and sensitive third-party traffic never leaves the browser.
 
 ### npm
 
@@ -198,13 +202,13 @@ Embedding the widget on pages with chatty third-party scripts (analytics, featur
 Bugdump.init({
   apiKey: 'your-api-key',
   consoleFilter: {
-    levels: ['warn', 'error'],                  // drop info/debug/log
-    exclude: ['[HMR]', /^\[Vue warn\]/],        // strings are substring, RegExp uses .test()
+    levels: ['warn', 'error'], // drop info/debug/log
+    exclude: ['[HMR]', /^\[Vue warn\]/], // strings are substring, RegExp uses .test()
     filter: (entry) => !entry.args[0]?.toString().startsWith('[GA]'),
   },
   networkFilter: {
-    excludeUrls: ['segment.io', /\/health$/],   // drop analytics + health checks
-    excludeMethods: ['OPTIONS'],                 // drop CORS preflights
+    excludeUrls: ['segment.io', /\/health$/], // drop analytics + health checks
+    excludeMethods: ['OPTIONS'], // drop CORS preflights
     // includeUrls: ['api.myapp.com'],           // if set, drop anything that doesn't match
     filter: (entry) => entry.status !== 401,
   },
@@ -242,11 +246,11 @@ The SDK keeps telemetry in rolling in-memory buffers and caps how much travels i
 
 ### Buffer sizes
 
-| Buffer | Idle cap | While recording | Per-entry truncation |
-|---|---|---|---|
-| Console logs | 300 entries | 2000 entries | 8 KB per argument |
-| Network requests | 150 entries | 1000 entries | 32 KB per request/response body |
-| Session replay | 15,000 rrweb events | — | 3-minute rolling window |
+| Buffer           | Idle cap            | While recording | Per-entry truncation            |
+| ---------------- | ------------------- | --------------- | ------------------------------- |
+| Console logs     | 300 entries         | 2000 entries    | 8 KB per argument               |
+| Network requests | 150 entries         | 1000 entries    | 32 KB per request/response body |
+| Session replay   | 15,000 rrweb events | —               | 3-minute rolling window         |
 
 Each buffer is FIFO: once full, the oldest entries are evicted. Use [console/network filters](#filtering-noise) to keep noise out of these buffers so the entries you care about aren't pushed out.
 
@@ -292,6 +296,7 @@ Use `data-*` attributes to configure the widget. All attributes are optional exc
   data-api-key="your-api-key"
   data-api-url="https://api.bugdump.com"
   data-theme="auto"
+  data-position="bottom-right"
   data-icon="chat"
   data-bubble-text="Found a bug?"
   data-hide-button="false"
@@ -308,26 +313,27 @@ Use `data-*` attributes to configure the widget. All attributes are optional exc
 ></script>
 ```
 
-| Data Attribute | Config Equivalent | Default | Description |
-|---|---|---|---|
-| `data-api-key` | `apiKey` | — | **Required.** Your Bugdump API key |
-| `data-api-url` | `endpoint` | `https://api.bugdump.com` | Custom API endpoint |
-| `data-theme` | `theme` | `auto` | Widget theme: `light`, `dark`, or `auto` |
-| `data-hide-button` | `hideButton` | `false` | Hide the floating button |
-| `data-show-report-link` | `showReportLink` | `false` | Show a link to the created report on the success screen |
-| `data-icon` | `icon` | `chat` | Custom trigger button icon (predefined name, URL, SVG, or emoji) |
-| `data-bubble-text` | `bubbleText` | — | Dismissible teaser bubble next to the floating button |
-| `data-capture-network-bodies` | `captureNetworkBodies` | `false` | Capture request/response bodies |
-| `data-screenshot` | `features.screenshot` | `true` | Screenshot capture button |
-| `data-screenshot-method` | `features.screenshotMethod` | `screen-capture` | `screen-capture` (getDisplayMedia) or `dom` (html2canvas) |
-| `data-screen-recording` | `features.screenRecording` | `true` | Screen recording button |
-| `data-screen-recording-method` | `features.screenRecordingMethod` | `screen-capture` | `screen-capture` (getDisplayMedia) or `dom` (rrweb) |
-| `data-session-replay` | `features.sessionReplay` | `true` | Background session replay collection |
-| `data-attachments` | `features.attachments` | `true` | File attachment button |
-| `data-allow-task-attach` | `features.allowTaskAttach` | `false` | Show "Attach to task" toggle in the widget |
-| `data-translations` | `translations` | — | JSON string with translation overrides |
-| `data-console-filter` | `consoleFilter` | — | JSON object with `levels` / `exclude` arrays (strings only) |
-| `data-network-filter` | `networkFilter` | — | JSON object with `excludeUrls` / `includeUrls` / `excludeMethods` arrays (strings only) |
+| Data Attribute                 | Config Equivalent                | Default                   | Description                                                                             |
+| ------------------------------ | -------------------------------- | ------------------------- | --------------------------------------------------------------------------------------- |
+| `data-api-key`                 | `apiKey`                         | —                         | **Required.** Your Bugdump API key                                                      |
+| `data-api-url`                 | `endpoint`                       | `https://api.bugdump.com` | Custom API endpoint                                                                     |
+| `data-theme`                   | `theme`                          | `auto`                    | Widget theme: `light`, `dark`, or `auto`                                                |
+| `data-position`                | `position`                       | `bottom-right`            | Widget corner: `bottom-right` or `bottom-left`                                          |
+| `data-hide-button`             | `hideButton`                     | `false`                   | Hide the floating button                                                                |
+| `data-show-report-link`        | `showReportLink`                 | `false`                   | Show a link to the created report on the success screen                                 |
+| `data-icon`                    | `icon`                           | `chat`                    | Custom trigger button icon (predefined name, URL, SVG, or emoji)                        |
+| `data-bubble-text`             | `bubbleText`                     | —                         | Dismissible teaser bubble next to the floating button                                   |
+| `data-capture-network-bodies`  | `captureNetworkBodies`           | `false`                   | Capture request/response bodies                                                         |
+| `data-screenshot`              | `features.screenshot`            | `true`                    | Screenshot capture button                                                               |
+| `data-screenshot-method`       | `features.screenshotMethod`      | `screen-capture`          | `screen-capture` (getDisplayMedia) or `dom` (html2canvas)                               |
+| `data-screen-recording`        | `features.screenRecording`       | `true`                    | Screen recording button                                                                 |
+| `data-screen-recording-method` | `features.screenRecordingMethod` | `screen-capture`          | `screen-capture` (getDisplayMedia) or `dom` (rrweb)                                     |
+| `data-session-replay`          | `features.sessionReplay`         | `true`                    | Background session replay collection                                                    |
+| `data-attachments`             | `features.attachments`           | `true`                    | File attachment button                                                                  |
+| `data-allow-task-attach`       | `features.allowTaskAttach`       | `false`                   | Show "Attach to task" toggle in the widget                                              |
+| `data-translations`            | `translations`                   | —                         | JSON string with translation overrides                                                  |
+| `data-console-filter`          | `consoleFilter`                  | —                         | JSON object with `levels` / `exclude` arrays (strings only)                             |
+| `data-network-filter`          | `networkFilter`                  | —                         | JSON object with `excludeUrls` / `includeUrls` / `excludeMethods` arrays (strings only) |
 
 ### Theme
 
@@ -365,21 +371,21 @@ Or via script tag:
 
 #### Predefined Icons
 
-| Name | Description |
-|---|---|
-| `chat` | Speech bubble (default) |
-| `bug` | Bug icon |
-| `feedback` | Message bubble with text lines |
-| `lightning` | Lightning bolt |
+| Name        | Description                    |
+| ----------- | ------------------------------ |
+| `chat`      | Speech bubble (default)        |
+| `bug`       | Bug icon                       |
+| `feedback`  | Message bubble with text lines |
+| `lightning` | Lightning bolt                 |
 
 #### Detection Rules
 
-| Input | Detected As |
-|---|---|
-| `bug`, `chat`, `feedback`, `lightning` | Predefined icon |
-| Starts with `<` | HTML/SVG string |
-| Starts with `http://`, `https://`, `//`, or `data:` | Image URL |
-| Anything else | Text/emoji |
+| Input                                               | Detected As     |
+| --------------------------------------------------- | --------------- |
+| `bug`, `chat`, `feedback`, `lightning`              | Predefined icon |
+| Starts with `<`                                     | HTML/SVG string |
+| Starts with `http://`, `https://`, `//`, or `data:` | Image URL       |
+| Anything else                                       | Text/emoji      |
 
 ## Report Link on Success Screen
 
@@ -426,7 +432,12 @@ const bugdump = Bugdump.init({
 ### Script Tag
 
 ```html
-<script src="https://bugdump.com/sdk/latest.js" async data-api-key="your-api-key" data-allow-task-attach="true"></script>
+<script
+  src="https://bugdump.com/sdk/latest.js"
+  async
+  data-api-key="your-api-key"
+  data-allow-task-attach="true"
+></script>
 ```
 
 ### Pre-filling the Task ID Programmatically
@@ -452,7 +463,7 @@ The `allowTaskAttach` feature must still be enabled for the server to accept the
 
 ## Headless Mode (No Floating Button)
 
-Hide the default floating button and trigger the report form from your own UI:
+Hide the default floating button and trigger the report form from your own UI. With no button to clear, the panel sits flush in its corner, the same distance from both edges.
 
 ### npm
 
@@ -474,9 +485,11 @@ document.getElementById('my-report-btn')?.addEventListener('click', () => {
 
 ```html
 <script>
-  window.bugdump = window.bugdump || function () {
-    (window.bugdump.q = window.bugdump.q || []).push(arguments);
-  };
+  window.bugdump =
+    window.bugdump ||
+    function () {
+      (window.bugdump.q = window.bugdump.q || []).push(arguments);
+    };
 </script>
 <script src="https://bugdump.com/sdk/latest.js" async data-api-key="your-api-key" data-hide-button="true"></script>
 <script>
@@ -591,9 +604,11 @@ When using the `<script>` tag, **do not** use the `data-api-key` attribute (whic
 
 ```html
 <script>
-  window.bugdump = window.bugdump || function () {
-    (window.bugdump.q = window.bugdump.q || []).push(arguments);
-  };
+  window.bugdump =
+    window.bugdump ||
+    function () {
+      (window.bugdump.q = window.bugdump.q || []).push(arguments);
+    };
 </script>
 <!-- Load the SDK without auto-init (no data-api-key) -->
 <script src="https://bugdump.com/sdk/latest.js" async></script>
@@ -712,6 +727,7 @@ The SDK exports all types you need:
 ```typescript
 import type {
   BugdumpConfig,
+  BugdumpPosition,
   BugdumpTheme,
   BugdumpTranslations,
   BugdumpUserContext,

@@ -3,7 +3,7 @@ import { closeIcon, resolveIcon, bugIcon } from './icons';
 import { Panel } from './panel';
 import { containKeyboardEvents } from './panel-utils';
 import type { PanelSubmitData, PanelFeatures } from './panel';
-import type { BugdumpTheme, BugdumpTranslations, ReportResponse } from '../types';
+import type { BugdumpPosition, BugdumpTheme, BugdumpTranslations, ReportResponse } from '../types';
 import type { SessionReplayCollector } from '../collectors/session-replay';
 import type { ActionCollector } from '../collectors/action';
 
@@ -12,6 +12,8 @@ const BUBBLE_DISMISSED_KEY = 'bugdump-bubble-dismissed';
 export class Widget {
   private host: HTMLElement;
   private shadowRoot: ShadowRoot;
+  private anchor: HTMLDivElement;
+  private dock: HTMLDivElement;
   private triggerBtn: HTMLButtonElement;
   private bubble: HTMLDivElement | null = null;
   private panel: Panel;
@@ -22,7 +24,15 @@ export class Widget {
 
   private onSubmit: ((data: PanelSubmitData) => Promise<ReportResponse>) | null = null;
 
-  constructor(options?: { hideButton?: boolean; icon?: string; bubbleText?: string; features?: PanelFeatures; theme?: BugdumpTheme; translations?: BugdumpTranslations }) {
+  constructor(options?: {
+    hideButton?: boolean;
+    icon?: string;
+    bubbleText?: string;
+    features?: PanelFeatures;
+    theme?: BugdumpTheme;
+    position?: BugdumpPosition;
+    translations?: BugdumpTranslations;
+  }) {
     this.host = document.createElement('bugdump-widget');
     // Mark the host with rrweb's block class so the session replay never records the widget
     // itself. The replay now runs continuously while the panel is open, and the panel must
@@ -34,28 +44,35 @@ export class Widget {
     this.shadowRoot = this.host.attachShadow({ mode: 'closed' });
     containKeyboardEvents(this.shadowRoot);
     this.applyTheme(options?.theme);
+    this.applyPosition(options?.position);
 
     const style = document.createElement('style');
     style.textContent = createStyles();
     this.shadowRoot.appendChild(style);
 
-    this.triggerIconHtml = options?.icon ? resolveIcon(options.icon) : bugIcon();
-    this.triggerBtn = this.createTriggerButton(
-      options?.translations?.triggerTitle ?? options?.translations?.title,
-    );
+    this.anchor = document.createElement('div');
+    this.anchor.className = 'bd-anchor';
+
+    this.dock = document.createElement('div');
+    this.dock.className = 'bd-dock';
     if (options?.hideButton) {
-      this.triggerBtn.style.display = 'none';
+      this.dock.style.display = 'none';
     }
-    this.shadowRoot.appendChild(this.triggerBtn);
+
+    this.triggerIconHtml = options?.icon ? resolveIcon(options.icon) : bugIcon();
+    this.triggerBtn = this.createTriggerButton(options?.translations?.triggerTitle ?? options?.translations?.title);
 
     const bubbleText = options?.bubbleText?.trim();
     if (bubbleText && !options?.hideButton && !isBubbleDismissed()) {
       this.bubble = this.createBubble(bubbleText);
-      this.shadowRoot.appendChild(this.bubble);
+      this.dock.appendChild(this.bubble);
     }
+    this.dock.appendChild(this.triggerBtn);
 
     this.panel = new Panel(this.shadowRoot, options?.features, options?.translations);
-    this.shadowRoot.appendChild(this.panel.getElement());
+    this.anchor.appendChild(this.panel.getElement());
+    this.anchor.appendChild(this.dock);
+    this.shadowRoot.appendChild(this.anchor);
 
     this.panel.setOnClose(() => this.close());
     this.panel.setOnMinimize(() => this.minimizePanel());
@@ -188,6 +205,10 @@ export class Widget {
     } else if (theme === 'auto') {
       this.host.classList.add('bd-theme-auto');
     }
+  }
+
+  private applyPosition(position?: BugdumpPosition): void {
+    this.host.classList.toggle('bd-pos-left', position === 'bottom-left');
   }
 
   private createTriggerButton(title?: string): HTMLButtonElement {

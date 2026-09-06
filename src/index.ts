@@ -2,10 +2,10 @@ import { Bugdump } from './lib/client';
 import { runAutoInit } from './lib/auto-init';
 export { Bugdump };
 export type { TelemetrySnapshot } from './lib/client';
-export { BugdumpApiError } from './lib/http-client';
-export type { HttpClient } from './lib/http-client';
+export { BugdumpApiError, HttpClient } from './lib/http-client';
 export type {
   BugdumpConfig,
+  BugdumpPosition,
   BugdumpTheme,
   BugdumpTranslations,
   BugdumpUserContext,

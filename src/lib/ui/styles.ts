@@ -77,10 +77,39 @@ export function createStyles(): string {
       }
     }
 
-    .bd-trigger {
+    .bd-anchor {
       position: fixed;
-      bottom: 20px;
-      right: 20px;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      box-sizing: border-box;
+      max-height: 100vh;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 12px;
+      pointer-events: none;
+      z-index: 2147483647;
+    }
+
+    .bd-dock {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-shrink: 0;
+      pointer-events: auto;
+    }
+
+    :host(.bd-pos-left) .bd-anchor {
+      align-items: flex-start;
+    }
+
+    :host(.bd-pos-left) .bd-dock {
+      flex-direction: row-reverse;
+    }
+
+    .bd-trigger {
       width: 56px;
       height: 56px;
       border-radius: 50%;
@@ -93,7 +122,7 @@ export function createStyles(): string {
       justify-content: center;
       box-shadow: 0 4px 12px var(--bd-shadow);
       transition: background-color 0.2s, transform 0.2s, box-shadow 0.2s;
-      z-index: 2147483647;
+      flex-shrink: 0;
       outline: none;
     }
 
@@ -137,9 +166,6 @@ export function createStyles(): string {
 
     /* Floating teaser bubble next to the trigger button */
     .bd-bubble {
-      position: fixed;
-      bottom: 28px;
-      right: 88px;
       display: flex;
       align-items: center;
       gap: 2px;
@@ -151,7 +177,6 @@ export function createStyles(): string {
       border-radius: 999px;
       box-shadow: 0 6px 20px var(--bd-shadow), 0 2px 6px var(--bd-shadow-light);
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-      z-index: 2147483646;
       animation: bd-bubble-in 0.3s ease-out 0.6s both;
     }
 
@@ -209,11 +234,8 @@ export function createStyles(): string {
     }
 
     .bd-panel {
-      position: fixed;
-      bottom: 88px;
-      right: 20px;
       width: 380px;
-      max-height: calc(100vh - 120px);
+      min-height: 0;
       background: var(--bd-bg);
       border: 1px solid var(--bd-border);
       border-radius: 18px;
@@ -225,7 +247,6 @@ export function createStyles(): string {
       opacity: 0;
       transition: transform 0.25s ease-out, opacity 0.25s ease-out;
       pointer-events: none;
-      z-index: 2147483646;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
       font-size: 14px;
       line-height: 1.5;
@@ -780,7 +801,6 @@ export function createStyles(): string {
 
     /* Recording bar — compact panel mode */
     .bd-panel--recording {
-      max-height: none;
       border-radius: 14px;
       width: auto;
     }
@@ -1063,12 +1083,17 @@ export function createStyles(): string {
     }
 
     @media (max-width: 440px) {
+      .bd-anchor {
+        padding: 0;
+        gap: 0;
+      }
+
+      .bd-dock {
+        margin: 0 20px 20px;
+      }
+
       .bd-panel {
-        right: 0;
-        left: 0;
-        bottom: 76px;
         width: 100%;
-        max-height: calc(100vh - 100px);
         border-radius: 16px 16px 0 0;
       }
     }

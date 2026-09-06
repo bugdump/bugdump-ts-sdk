@@ -1,4 +1,5 @@
 import { Bugdump } from './client';
+import { BUGDUMP_POSITIONS } from './core/config';
 
 // Auto-init: detect <script data-api-key="..."> and initialize automatically
 export function runAutoInit(): void {
@@ -10,7 +11,9 @@ export function runAutoInit(): void {
     document.currentScript ||
     (() => {
       const scripts = document.querySelectorAll('script[data-api-key]');
-      console.debug(`[Bugdump] document.currentScript not available, found ${scripts.length} script(s) with data-api-key`);
+      console.debug(
+        `[Bugdump] document.currentScript not available, found ${scripts.length} script(s) with data-api-key`,
+      );
       return scripts[scripts.length - 1] as HTMLScriptElement | null;
     })();
 
@@ -22,17 +25,27 @@ export function runAutoInit(): void {
     const hideButton = el.getAttribute('data-hide-button') === 'true';
     const showReportLink = el.getAttribute('data-show-report-link') === 'true';
     const theme = el.getAttribute('data-theme') as 'light' | 'dark' | 'auto' | null;
+    const rawPosition = el.getAttribute('data-position');
+    const position = BUGDUMP_POSITIONS.find((candidate) => candidate === rawPosition);
+    if (rawPosition && !position) {
+      console.warn(`[Bugdump] Auto-init: invalid data-position "${rawPosition}", ignoring.`);
+    }
     const icon = el.getAttribute('data-icon');
     const bubbleText = el.getAttribute('data-bubble-text');
 
     const features: Record<string, boolean | string> = {};
     if (el.hasAttribute('data-screenshot')) features.screenshot = el.getAttribute('data-screenshot') !== 'false';
-    if (el.hasAttribute('data-screenshot-method')) features.screenshotMethod = el.getAttribute('data-screenshot-method') || 'dom';
-    if (el.hasAttribute('data-screen-recording')) features.screenRecording = el.getAttribute('data-screen-recording') !== 'false';
-    if (el.hasAttribute('data-screen-recording-method')) features.screenRecordingMethod = el.getAttribute('data-screen-recording-method') || 'dom';
-    if (el.hasAttribute('data-session-replay')) features.sessionReplay = el.getAttribute('data-session-replay') !== 'false';
+    if (el.hasAttribute('data-screenshot-method'))
+      features.screenshotMethod = el.getAttribute('data-screenshot-method') || 'dom';
+    if (el.hasAttribute('data-screen-recording'))
+      features.screenRecording = el.getAttribute('data-screen-recording') !== 'false';
+    if (el.hasAttribute('data-screen-recording-method'))
+      features.screenRecordingMethod = el.getAttribute('data-screen-recording-method') || 'dom';
+    if (el.hasAttribute('data-session-replay'))
+      features.sessionReplay = el.getAttribute('data-session-replay') !== 'false';
     if (el.hasAttribute('data-attachments')) features.attachments = el.getAttribute('data-attachments') !== 'false';
-    if (el.hasAttribute('data-allow-task-attach')) features.allowTaskAttach = el.getAttribute('data-allow-task-attach') !== 'false';
+    if (el.hasAttribute('data-allow-task-attach'))
+      features.allowTaskAttach = el.getAttribute('data-allow-task-attach') !== 'false';
 
     let translations: Record<string, string> | undefined;
     const translationsAttr = el.getAttribute('data-translations');
@@ -60,6 +73,7 @@ export function runAutoInit(): void {
       captureNetworkBodies,
       hideButton,
       theme: theme || '(default)',
+      position: position || '(default)',
       features,
     });
 
@@ -71,6 +85,7 @@ export function runAutoInit(): void {
         ...(hideButton && { hideButton }),
         ...(showReportLink && { showReportLink }),
         ...(theme && { theme }),
+        ...(position && { position }),
         ...(icon && { icon }),
         ...(bubbleText && { bubbleText }),
         ...(Object.keys(features).length > 0 && { features }),

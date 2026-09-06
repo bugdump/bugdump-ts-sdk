@@ -44,12 +44,7 @@ export interface FreehandOperation extends BaseDrawOperation {
   points: Point[];
 }
 
-export type DrawOperation =
-  | ArrowOperation
-  | BoxOperation
-  | TextOperation
-  | BlurOperation
-  | FreehandOperation;
+export type DrawOperation = ArrowOperation | BoxOperation | TextOperation | BlurOperation | FreehandOperation;
 
 const ARROW_HEAD_LENGTH = 15;
 const ARROW_HEAD_ANGLE = Math.PI / 6;
@@ -64,13 +59,7 @@ function generateId(): string {
   return `ann_${Date.now()}_${++idCounter}`;
 }
 
-function renderArrow(
-  ctx: CanvasRenderingContext2D,
-  start: Point,
-  end: Point,
-  color: string,
-  lineWidth: number,
-): void {
+function renderArrow(ctx: CanvasRenderingContext2D, start: Point, end: Point, color: string, lineWidth: number): void {
   const angle = Math.atan2(end.y - start.y, end.x - start.x);
 
   ctx.save();
@@ -101,13 +90,7 @@ function renderArrow(
   ctx.restore();
 }
 
-function renderBox(
-  ctx: CanvasRenderingContext2D,
-  start: Point,
-  end: Point,
-  color: string,
-  lineWidth: number,
-): void {
+function renderBox(ctx: CanvasRenderingContext2D, start: Point, end: Point, color: string, lineWidth: number): void {
   ctx.save();
   ctx.strokeStyle = color;
   ctx.lineWidth = lineWidth;
@@ -133,12 +116,7 @@ function renderText(
   const textHeight = fontSize * 1.2;
 
   ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
-  ctx.fillRect(
-    position.x - padding,
-    position.y - padding,
-    metrics.width + padding * 2,
-    textHeight + padding * 2,
-  );
+  ctx.fillRect(position.x - padding, position.y - padding, metrics.width + padding * 2, textHeight + padding * 2);
 
   ctx.fillStyle = color;
   ctx.fillText(text, position.x, position.y);
@@ -172,12 +150,7 @@ function renderBlurRegion(
   ctx.restore();
 }
 
-function renderFreehand(
-  ctx: CanvasRenderingContext2D,
-  points: Point[],
-  color: string,
-  lineWidth: number,
-): void {
+function renderFreehand(ctx: CanvasRenderingContext2D, points: Point[], color: string, lineWidth: number): void {
   if (points.length < 2) return;
 
   ctx.save();
@@ -197,11 +170,7 @@ function renderFreehand(
   ctx.restore();
 }
 
-function renderOperation(
-  ctx: CanvasRenderingContext2D,
-  canvas: HTMLCanvasElement,
-  op: DrawOperation,
-): void {
+function renderOperation(ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, op: DrawOperation): void {
   switch (op.tool) {
     case 'arrow':
       renderArrow(ctx, op.start, op.end, op.color, op.lineWidth);
@@ -221,10 +190,7 @@ function renderOperation(
   }
 }
 
-export function renderOperationsToCanvas(
-  ctx: CanvasRenderingContext2D,
-  operations: DrawOperation[],
-): void {
+export function renderOperationsToCanvas(ctx: CanvasRenderingContext2D, operations: DrawOperation[]): void {
   for (const op of operations) {
     renderOperation(ctx, ctx.canvas, op);
   }

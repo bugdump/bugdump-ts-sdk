@@ -45,16 +45,9 @@ import {
   RECORDING_VIDEO_BITRATE,
   generateAttachmentId,
 } from './panel-types';
-import type {
-  TextAnnotationMeta,
-  Attachment,
-  PanelSubmitData,
-  PanelFeatures,
-  PanelElements,
-} from './panel-types';
+import type { TextAnnotationMeta, Attachment, PanelSubmitData, PanelFeatures, PanelElements } from './panel-types';
 
 export type { TextAnnotationMeta, Attachment, PanelSubmitData, PanelFeatures };
-
 
 export class Panel {
   private elements: PanelElements;
@@ -102,8 +95,19 @@ export class Panel {
   private sessionReplayAttached = false;
   private derivedActions: UserAction[] = [];
 
-  constructor(private shadowRoot: ShadowRoot, features?: PanelFeatures, translations?: BugdumpTranslations) {
-    this.features = features ?? { screenshot: true, screenshotMethod: 'dom', screenRecording: true, screenRecordingMethod: 'dom', attachments: true, allowTaskAttach: false };
+  constructor(
+    private shadowRoot: ShadowRoot,
+    features?: PanelFeatures,
+    translations?: BugdumpTranslations,
+  ) {
+    this.features = features ?? {
+      screenshot: true,
+      screenshotMethod: 'dom',
+      screenRecording: true,
+      screenRecordingMethod: 'dom',
+      attachments: true,
+      allowTaskAttach: false,
+    };
     this.t = { ...DEFAULT_TRANSLATIONS, ...translations };
     this.elements = this.createDOM();
     this.applyFeatures();
@@ -226,9 +230,7 @@ export class Panel {
     const packer = new ReplayPacker();
     const fitted = trimReplayToBudget(events, this.maxMediaSize, (slice) => packer.size(slice));
     if (fitted.length > 0) {
-      const durationMs = fitted.length >= 2
-        ? fitted[fitted.length - 1]!.timestamp - fitted[0]!.timestamp
-        : 0;
+      const durationMs = fitted.length >= 2 ? fitted[fitted.length - 1]!.timestamp - fitted[0]!.timestamp : 0;
       const durationS = Math.round(durationMs / 1000);
 
       this.addAttachment({
@@ -239,7 +241,9 @@ export class Panel {
         durationSeconds: durationS,
       });
     } else {
-      console.warn('[Bugdump] Session replay dropped: exceeds max size even after trimming. Actions list still attached.');
+      console.warn(
+        '[Bugdump] Session replay dropped: exceeds max size even after trimming. Actions list still attached.',
+      );
     }
   }
 
@@ -611,8 +615,7 @@ export class Panel {
     existingAttachmentId?: string,
   ): void {
     this.annotationContainer = document.createElement('div');
-    this.annotationContainer.style.cssText =
-      'position:fixed;top:0;left:0;width:100%;height:100%;z-index:2147483647;';
+    this.annotationContainer.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;z-index:2147483647;';
 
     const shadow = this.annotationContainer.attachShadow({ mode: 'closed' });
     containKeyboardEvents(shadow);
@@ -707,7 +710,11 @@ export class Panel {
     }
   }
 
-  private async finishAnnotation(originalBlob: Blob, image: HTMLImageElement, existingAttachmentId?: string): Promise<void> {
+  private async finishAnnotation(
+    originalBlob: Blob,
+    image: HTMLImageElement,
+    existingAttachmentId?: string,
+  ): Promise<void> {
     const operations = this.annotationOverlay?.getOperations() ?? [];
 
     let blob: Blob;
@@ -903,7 +910,9 @@ export class Panel {
         this.recordedSize += e.data.size;
 
         if (this.recordedSize > this.maxMediaSize) {
-          console.warn(`[Bugdump] Recording stopped: max size exceeded (${Math.round(this.maxMediaSize / 1024 / 1024)}MB)`);
+          console.warn(
+            `[Bugdump] Recording stopped: max size exceeded (${Math.round(this.maxMediaSize / 1024 / 1024)}MB)`,
+          );
           this.stopRecording();
           return;
         }
@@ -958,9 +967,7 @@ export class Panel {
   private async enableMicWithDevice(deviceId: string | null): Promise<void> {
     this.disconnectMic();
 
-    const audioConstraints: MediaTrackConstraints = deviceId
-      ? { deviceId: { exact: deviceId } }
-      : {};
+    const audioConstraints: MediaTrackConstraints = deviceId ? { deviceId: { exact: deviceId } } : {};
     try {
       this.micStream = await navigator.mediaDevices.getUserMedia({ audio: audioConstraints });
     } catch (err) {
@@ -990,8 +997,7 @@ export class Panel {
     try {
       // Request temporary mic access to get device labels
       const tempStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      devices = (await navigator.mediaDevices.enumerateDevices())
-        .filter((d) => d.kind === 'audioinput');
+      devices = (await navigator.mediaDevices.enumerateDevices()).filter((d) => d.kind === 'audioinput');
       tempStream.getTracks().forEach((t) => t.stop());
     } catch (err) {
       console.warn('[Bugdump] Microphone access denied:', err);
@@ -1141,7 +1147,9 @@ export class Panel {
           },
         });
       } else {
-        console.warn('[Bugdump] Recording replay dropped: exceeds max size even after trimming. Actions list still attached.');
+        console.warn(
+          '[Bugdump] Recording replay dropped: exceeds max size even after trimming. Actions list still attached.',
+        );
       }
     }
 
@@ -1431,9 +1439,10 @@ export class Panel {
       case 'recording':
         return `${videoIcon()} ${this.t.badgeRecording}`;
       case 'session_replay': {
-        const label = att.durationSeconds != null && att.durationSeconds > 0
-          ? `${this.t.badgeReplay} (${formatDuration(att.durationSeconds)})`
-          : this.t.badgeReplay;
+        const label =
+          att.durationSeconds != null && att.durationSeconds > 0
+            ? `${this.t.badgeReplay} (${formatDuration(att.durationSeconds)})`
+            : this.t.badgeReplay;
         return `${replayIcon()} ${label}`;
       }
       case 'voice_note':
@@ -1560,4 +1569,3 @@ function parseTaskIdInput(raw: string): number | null {
   const n = Number(digits);
   return Number.isInteger(n) && n > 0 ? n : null;
 }
-

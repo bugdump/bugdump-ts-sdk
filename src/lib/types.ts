@@ -12,6 +12,8 @@ export interface BugdumpFeatures {
 
 export type BugdumpTheme = 'light' | 'dark' | 'auto';
 
+export type BugdumpPosition = 'bottom-right' | 'bottom-left';
+
 export interface BugdumpTranslations {
   title?: string;
   triggerTitle?: string;
@@ -95,6 +97,7 @@ export interface BugdumpConfig {
   hideButton?: boolean;
   showReportLink?: boolean;
   theme?: BugdumpTheme;
+  position?: BugdumpPosition;
   icon?: string;
   bubbleText?: string;
   features?: BugdumpFeatures;

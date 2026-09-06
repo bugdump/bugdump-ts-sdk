@@ -210,7 +210,10 @@ export class NetworkCollector {
     ) {
       this.__bd_method = method.toUpperCase();
       this.__bd_url = typeof url === 'string' ? url : url.href;
-      return self.originalXhrOpen!.apply(this, arguments as unknown as Parameters<typeof XMLHttpRequest.prototype.open>);
+      return self.originalXhrOpen!.apply(
+        this,
+        arguments as unknown as Parameters<typeof XMLHttpRequest.prototype.open>,
+      );
     };
 
     XMLHttpRequest.prototype.send = function (
@@ -295,7 +298,8 @@ export class NetworkCollector {
       });
       return this.truncateBody(parts.join('&'));
     }
-    if (body instanceof ArrayBuffer || body instanceof Blob) return `[Binary: ${body instanceof Blob ? body.size : body.byteLength} bytes]`;
+    if (body instanceof ArrayBuffer || body instanceof Blob)
+      return `[Binary: ${body instanceof Blob ? body.size : body.byteLength} bytes]`;
     try {
       return this.truncateBody(JSON.stringify(body));
     } catch {

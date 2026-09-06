@@ -30,6 +30,11 @@ describe('resolveConfig', () => {
     expect(resolveConfig({ apiKey: 'k' }).endpoint).toBe('https://api.bugdump.com');
   });
 
+  it('defaults the position to the bottom-right corner and passes an explicit side through', () => {
+    expect(resolveConfig({ apiKey: 'k' }).position).toBe('bottom-right');
+    expect(resolveConfig({ apiKey: 'k', position: 'bottom-left' }).position).toBe('bottom-left');
+  });
+
   it('reuses a custom panel title as the trigger tooltip unless overridden', () => {
     expect(resolveConfig({ apiKey: 'k', translations: { title: 'Report it' } }).translations.triggerTitle).toBe(
       'Report it',

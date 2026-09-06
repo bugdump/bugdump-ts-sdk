@@ -18,8 +18,7 @@ async function waitForPageReady(): Promise<void> {
     ]);
   }
 
-  const images = Array.from(document.querySelectorAll('img'))
-    .filter((img) => img.src && img.offsetParent !== null);
+  const images = Array.from(document.querySelectorAll('img')).filter((img) => img.src && img.offsetParent !== null);
   const pendingImages = images.filter((img) => !img.complete);
 
   if (pendingImages.length > 0) {
@@ -52,12 +51,8 @@ export interface ScreenshotResult {
 
 function replaceFormFieldsWithStaticText(doc: Document): void {
   const liveDoc = document;
-  const liveFields = Array.from(
-    liveDoc.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>('input, textarea'),
-  );
-  const clonedFields = Array.from(
-    doc.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>('input, textarea'),
-  );
+  const liveFields = Array.from(liveDoc.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>('input, textarea'));
+  const clonedFields = Array.from(doc.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>('input, textarea'));
 
   if (liveFields.length !== clonedFields.length) return;
 
@@ -70,7 +65,14 @@ function replaceFormFieldsWithStaticText(doc: Document): void {
     if (tag === 'input') {
       const inputEl = cloned as HTMLInputElement;
       const type = (inputEl.getAttribute('type') ?? 'text').toLowerCase();
-      if (type === 'checkbox' || type === 'radio' || type === 'file' || type === 'hidden' || type === 'range' || type === 'color') {
+      if (
+        type === 'checkbox' ||
+        type === 'radio' ||
+        type === 'file' ||
+        type === 'hidden' ||
+        type === 'range' ||
+        type === 'color'
+      ) {
         continue;
       }
       inputEl.setAttribute('value', type === 'password' ? '•'.repeat(value.length) : value);
@@ -91,14 +93,8 @@ function replaceFormFieldsWithStaticText(doc: Document): void {
   }
 }
 
-export async function captureScreenshot(
-  options: ScreenshotOptions = {},
-): Promise<ScreenshotResult> {
-  const {
-    quality = DEFAULT_QUALITY,
-    target = document.documentElement,
-    filter,
-  } = options;
+export async function captureScreenshot(options: ScreenshotOptions = {}): Promise<ScreenshotResult> {
+  const { quality = DEFAULT_QUALITY, target = document.documentElement, filter } = options;
 
   await waitForPageReady();
 

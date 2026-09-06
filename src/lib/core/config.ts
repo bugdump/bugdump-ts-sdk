@@ -1,9 +1,11 @@
-import type { BugdumpConfig, BugdumpFeatures, BugdumpTranslations, CaptureMethod } from '../types';
+import type { BugdumpConfig, BugdumpFeatures, BugdumpPosition, BugdumpTranslations, CaptureMethod } from '../types';
 
 export type ResolvedBugdumpConfig = Required<Omit<BugdumpConfig, 'consoleFilter' | 'networkFilter'>> &
   Pick<BugdumpConfig, 'consoleFilter' | 'networkFilter'>;
 
 const DEFAULT_ENDPOINT = 'https://api.bugdump.com';
+
+export const BUGDUMP_POSITIONS: readonly BugdumpPosition[] = ['bottom-right', 'bottom-left'];
 
 const DEFAULT_FEATURES: Required<BugdumpFeatures> = {
   screenshot: true,
@@ -18,7 +20,7 @@ const DEFAULT_FEATURES: Required<BugdumpFeatures> = {
 export const DEFAULT_TRANSLATIONS: Required<BugdumpTranslations> = {
   title: 'Send feedback',
   triggerTitle: 'Send feedback',
-  descriptionPlaceholder: 'What\'s on your mind?',
+  descriptionPlaceholder: "What's on your mind?",
   attachButton: 'Attach',
   screenshotButton: 'Screenshot',
   recordButton: 'Record',
@@ -62,6 +64,7 @@ export function resolveConfig(config: BugdumpConfig): ResolvedBugdumpConfig {
     hideButton: config.hideButton ?? false,
     showReportLink: config.showReportLink ?? false,
     theme: config.theme ?? 'auto',
+    position: config.position ?? 'bottom-right',
     icon: config.icon ?? '',
     bubbleText: config.bubbleText ?? '',
     features: { ...DEFAULT_FEATURES, ...config.features },

@@ -127,9 +127,7 @@ describe('dispatchCommand', () => {
 
     dispatchCommand('identify', [{ email: 'a@b.c' }]);
 
-    expect(console.warn).toHaveBeenCalledWith(
-      expect.stringContaining('Command "identify" ignored'),
-    );
+    expect(console.warn).toHaveBeenCalledWith(expect.stringContaining('Command "identify" ignored'));
   });
 
   it('warns when the command is not a string', () => {

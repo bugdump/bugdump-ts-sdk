@@ -223,6 +223,7 @@ export class Bugdump {
     const features = this.state.config?.features;
     this.widget = new Widget({
       hideButton: this.state.config?.hideButton,
+      position: this.state.config?.position,
       icon: this.state.config?.icon,
       bubbleText: this.state.config?.bubbleText,
       theme: this.state.config?.theme,

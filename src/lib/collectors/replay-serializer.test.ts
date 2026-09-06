@@ -15,7 +15,11 @@ function metaEvent(ts: number): eventWithTime {
 }
 
 function incrementalEvent(ts: number): eventWithTime {
-  return { type: 3, data: { source: 1, positions: [{ x: ts, y: ts, id: 1, timeOffset: 0 }] }, timestamp: ts } as eventWithTime;
+  return {
+    type: 3,
+    data: { source: 1, positions: [{ x: ts, y: ts, id: 1, timeOffset: 0 }] },
+    timestamp: ts,
+  } as eventWithTime;
 }
 
 async function blobText(blob: Blob): Promise<string> {

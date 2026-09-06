@@ -128,11 +128,7 @@ export class HttpClient {
       } catch {
         // response body is not JSON
       }
-      throw new BugdumpApiError(
-        errorBody?.error || `HTTP_${response.status}`,
-        response.status,
-        errorBody?.details,
-      );
+      throw new BugdumpApiError(errorBody?.error || `HTTP_${response.status}`, response.status, errorBody?.details);
     }
 
     return (await response.json()) as T;
@@ -170,11 +166,7 @@ export class HttpClient {
       } catch {
         // response body is not JSON
       }
-      throw new BugdumpApiError(
-        errorBody?.error || `HTTP_${response.status}`,
-        response.status,
-        errorBody?.details,
-      );
+      throw new BugdumpApiError(errorBody?.error || `HTTP_${response.status}`, response.status, errorBody?.details);
     }
 
     return (await response.json()) as T;
