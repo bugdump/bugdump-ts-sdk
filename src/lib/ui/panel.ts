@@ -32,7 +32,14 @@ import { trimReplayToBudget, SESSION_REPLAY_WINDOW_MS } from '../collectors/sess
 import { ReplayPacker } from '../collectors/replay-serializer';
 import type { ActionCollector } from '../collectors/action';
 import { getAnnotationStyles } from './panel-annotation-styles';
-import { delay, loadImage, formatDuration, getSupportedMimeType, containKeyboardEvents } from './panel-utils';
+import {
+  delay,
+  loadImage,
+  formatDuration,
+  getSupportedMimeType,
+  containKeyboardEvents,
+  parseTaskIdInput,
+} from './panel-utils';
 import {
   MAX_ATTACHMENTS,
   MAX_DESCRIPTION_LENGTH,
@@ -1563,9 +1570,3 @@ export class Panel {
   }
 }
 
-function parseTaskIdInput(raw: string): number | null {
-  const digits = raw.replace(/\D/g, '');
-  if (!digits) return null;
-  const n = Number(digits);
-  return Number.isInteger(n) && n > 0 ? n : null;
-}

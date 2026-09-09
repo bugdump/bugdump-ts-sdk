@@ -41,3 +41,14 @@ export function containKeyboardEvents(root: ShadowRoot): void {
     root.addEventListener(type, (e) => e.stopPropagation());
   }
 }
+
+// `42`, `#42` and `BD-42` all name task 42. Taking every digit instead would fold a digit inside
+// the project key into the number — `WEB3-42` would attach the report to task 342 — so the key,
+// whatever it is, has to be matched and dropped rather than stripped character by character.
+const TASK_ID_INPUT_PATTERN = /^(?:#|[A-Za-z][A-Za-z0-9]{1,9}-)?([1-9]\d{0,8})$/;
+
+/** The task number a reporter typed, or null when what they typed does not name a task. */
+export function parseTaskIdInput(raw: string): number | null {
+  const match = TASK_ID_INPUT_PATTERN.exec(raw.trim());
+  return match ? Number(match[1]) : null;
+}

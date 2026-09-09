@@ -28,11 +28,20 @@ function measurePayload(payload: ReportPayload): number {
  * elements are mutated, dropped, or truncated. The arithmetic mirrors how JSON
  * serializes an array — `[` + elements joined by `,` + `]` — so the running total is
  * identical to a full `JSON.stringify(payload).length` at every step.
+ *
+ * Every operation here is O(1): the element lengths are kept as running sums, and a
+ * dropped prefix is tracked with a start index rather than shifted out. Both matter —
+ * this runs in the page at report time, and the arrays it trims are exactly the ones
+ * that grow to tens of thousands of entries.
  */
 class PayloadSizer {
   private base: number;
   private consoleLen: number[];
   private networkLen: number[];
+  private consoleSum = 0;
+  private networkSum = 0;
+  private consoleStart = 0;
+  private networkStart = 0;
 
   constructor(private payload: ReportPayload) {
     const logs = payload.consoleLogs ?? [];
@@ -40,6 +49,8 @@ class PayloadSizer {
 
     this.consoleLen = logs.map((entry) => JSON.stringify(entry).length);
     this.networkLen = requests.map((entry) => JSON.stringify(entry).length);
+    for (const len of this.consoleLen) this.consoleSum += len;
+    for (const len of this.networkLen) this.networkSum += len;
 
     // Base = full payload with both heavy arrays emptied to `[]` (length 2 each).
     const savedLogs = payload.consoleLogs;
@@ -51,12 +62,10 @@ class PayloadSizer {
     if (savedRequests) payload.networkRequests = savedRequests;
   }
 
-  /** Serialized length of an array given each element's serialized length. */
-  private arrayLength(elementLengths: number[]): number {
-    if (elementLengths.length === 0) return 2; // "[]"
-    let sum = 2 + elementLengths.length - 1; // brackets + (n-1) commas
-    for (const len of elementLengths) sum += len;
-    return sum;
+  /** Serialized length of an array of `count` elements whose lengths sum to `sum`. */
+  private arrayLength(count: number, sum: number): number {
+    if (count === 0) return 2; // "[]"
+    return 2 + count - 1 + sum; // brackets + (n-1) commas + elements
   }
 
   total(): number {
@@ -65,25 +74,33 @@ class PayloadSizer {
       this.base -
       (this.payload.consoleLogs ? 2 : 0) -
       (this.payload.networkRequests ? 2 : 0) +
-      (this.payload.consoleLogs ? this.arrayLength(this.consoleLen) : 0) +
-      (this.payload.networkRequests ? this.arrayLength(this.networkLen) : 0)
+      (this.payload.consoleLogs ? this.arrayLength(this.consoleLen.length - this.consoleStart, this.consoleSum) : 0) +
+      (this.payload.networkRequests ? this.arrayLength(this.networkLen.length - this.networkStart, this.networkSum) : 0)
     );
   }
 
   setConsoleEntry(index: number): void {
-    this.consoleLen[index] = JSON.stringify(this.payload.consoleLogs![index]).length;
+    const at = this.consoleStart + index;
+    const next = JSON.stringify(this.payload.consoleLogs![index]).length;
+    this.consoleSum += next - this.consoleLen[at]!;
+    this.consoleLen[at] = next;
   }
 
   setNetworkEntry(index: number): void {
-    this.networkLen[index] = JSON.stringify(this.payload.networkRequests![index]).length;
+    const at = this.networkStart + index;
+    const next = JSON.stringify(this.payload.networkRequests![index]).length;
+    this.networkSum += next - this.networkLen[at]!;
+    this.networkLen[at] = next;
   }
 
   shiftConsole(): void {
-    this.consoleLen.shift();
+    this.consoleSum -= this.consoleLen[this.consoleStart]!;
+    this.consoleStart++;
   }
 
   shiftNetwork(): void {
-    this.networkLen.shift();
+    this.networkSum -= this.networkLen[this.networkStart]!;
+    this.networkStart++;
   }
 }
 
@@ -144,12 +161,14 @@ function dropOldestConsoleLogs(payload: ReportPayload, sizer: PayloadSizer): num
   const logs = payload.consoleLogs;
   if (!logs || logs.length <= MIN_CONSOLE_LOGS) return 0;
 
+  // Counted first and spliced once: dropping one at a time would shift the whole array
+  // on every step, which is the same quadratic cost the sizer exists to avoid.
   let dropped = 0;
-  while (logs.length > MIN_CONSOLE_LOGS && sizer.total() > MAX_PAYLOAD_BYTES) {
-    logs.shift();
+  while (logs.length - dropped > MIN_CONSOLE_LOGS && sizer.total() > MAX_PAYLOAD_BYTES) {
     sizer.shiftConsole();
     dropped++;
   }
+  if (dropped > 0) logs.splice(0, dropped);
   return dropped;
 }
 
@@ -158,11 +177,11 @@ function dropOldestNetworkRequests(payload: ReportPayload, sizer: PayloadSizer):
   if (!requests || requests.length <= MIN_NETWORK_REQUESTS) return 0;
 
   let dropped = 0;
-  while (requests.length > MIN_NETWORK_REQUESTS && sizer.total() > MAX_PAYLOAD_BYTES) {
-    requests.shift();
+  while (requests.length - dropped > MIN_NETWORK_REQUESTS && sizer.total() > MAX_PAYLOAD_BYTES) {
     sizer.shiftNetwork();
     dropped++;
   }
+  if (dropped > 0) requests.splice(0, dropped);
   return dropped;
 }
 
