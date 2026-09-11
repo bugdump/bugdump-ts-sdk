@@ -19,6 +19,7 @@ function makeInstance() {
     identify: vi.fn(),
     reset: vi.fn(),
     setContext: vi.fn(),
+    setTheme: vi.fn(),
     open: vi.fn(),
     close: vi.fn(),
     identifyTask: vi.fn(),
@@ -113,6 +114,16 @@ describe('installCommandInterface', () => {
 });
 
 describe('dispatchCommand', () => {
+  it('forwards setTheme to the instance', () => {
+    const instance = makeInstance();
+    getInstanceMock.mockReturnValue(instance);
+
+    dispatchCommand('setTheme', ['dark']);
+
+    expect(instance.setTheme).toHaveBeenCalledWith('dark');
+    expect(console.warn).not.toHaveBeenCalled();
+  });
+
   it('warns on an unknown command without touching the instance', () => {
     const instance = makeInstance();
     getInstanceMock.mockReturnValue(instance);

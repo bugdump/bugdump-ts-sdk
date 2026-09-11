@@ -26,7 +26,7 @@ import type { ScreenshotResult } from '../capture/screenshot';
 import { AnnotationOverlay, renderOperationsToCanvas } from '../capture/annotation';
 import type { TextOperation } from '../capture/annotation';
 import { DEFAULT_TRANSLATIONS } from '../core/config';
-import type { BugdumpTranslations, CaptureMethod, ReportResponse, UserAction } from '../types';
+import type { BugdumpTheme, BugdumpTranslations, CaptureMethod, ReportResponse, UserAction } from '../types';
 import type { SessionReplayCollector } from '../collectors/session-replay';
 import { trimReplayToBudget, SESSION_REPLAY_WINDOW_MS } from '../collectors/session-replay';
 import { ReplayPacker } from '../collectors/replay-serializer';
@@ -38,6 +38,7 @@ import {
   formatDuration,
   getSupportedMimeType,
   containKeyboardEvents,
+  getThemeClass,
   parseTaskIdInput,
 } from './panel-utils';
 import {
@@ -96,6 +97,7 @@ export class Panel {
 
   private dashboardUrl: string | null = null;
   private showReportLink = false;
+  private theme: BugdumpTheme | undefined;
 
   private sessionReplayCollector: SessionReplayCollector | null = null;
   private actionCollector: ActionCollector | null = null;
@@ -185,6 +187,10 @@ export class Panel {
 
   setShowReportLink(show: boolean): void {
     this.showReportLink = show;
+  }
+
+  setTheme(theme?: BugdumpTheme): void {
+    this.theme = theme;
   }
 
   updateFeatures(features: Partial<PanelFeatures>): void {
@@ -623,6 +629,10 @@ export class Panel {
   ): void {
     this.annotationContainer = document.createElement('div');
     this.annotationContainer.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;z-index:2147483647;';
+    const themeClass = getThemeClass(this.theme);
+    if (themeClass) {
+      this.annotationContainer.classList.add(themeClass);
+    }
 
     const shadow = this.annotationContainer.attachShadow({ mode: 'closed' });
     containKeyboardEvents(shadow);

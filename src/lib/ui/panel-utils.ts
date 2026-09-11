@@ -1,3 +1,5 @@
+import type { BugdumpTheme } from '../types';
+
 export function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -15,6 +17,12 @@ export function formatDuration(totalSeconds: number): string {
   const minutes = Math.floor(totalSeconds / 60);
   const seconds = totalSeconds % 60;
   return `${minutes}:${String(seconds).padStart(2, '0')}`;
+}
+
+export function getThemeClass(theme: BugdumpTheme | undefined): 'bd-theme-dark' | 'bd-theme-auto' | null {
+  if (theme === 'dark') return 'bd-theme-dark';
+  if (theme === 'auto') return 'bd-theme-auto';
+  return null;
 }
 
 export function getSupportedMimeType(): string {

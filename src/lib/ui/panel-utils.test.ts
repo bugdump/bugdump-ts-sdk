@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatDuration, parseTaskIdInput } from './panel-utils';
+import { formatDuration, getThemeClass, parseTaskIdInput } from './panel-utils';
 
 describe('parseTaskIdInput', () => {
   it('reads a bare number', () => {
@@ -32,5 +32,17 @@ describe('formatDuration', () => {
     expect(formatDuration(5)).toBe('0:05');
     expect(formatDuration(65)).toBe('1:05');
     expect(formatDuration(600)).toBe('10:00');
+  });
+});
+
+describe('getThemeClass', () => {
+  it('maps dark and auto to their host classes', () => {
+    expect(getThemeClass('dark')).toBe('bd-theme-dark');
+    expect(getThemeClass('auto')).toBe('bd-theme-auto');
+  });
+
+  it('needs no class for the light base style', () => {
+    expect(getThemeClass('light')).toBeNull();
+    expect(getThemeClass(undefined)).toBeNull();
   });
 });

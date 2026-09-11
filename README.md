@@ -63,7 +63,7 @@ const bugdump = Bugdump.init({
 
 The three-line stub makes `bugdump(...)` safe to call immediately: until the SDK arrives it queues calls, and when the script loads the SDK replays them in order and replaces the stub with a live dispatcher — so the same `bugdump(...)` calls work before and after load. Without it, an inline `Bugdump.init(...)` would race the `async` download and throw `Bugdump is not defined`.
 
-Any fire-and-forget method can be a command: `bugdump('identify', { email: '...' })`, `bugdump('open', { taskId: 42 })`, `bugdump('setContext', {...})`, plus `reset`, `close`, `identifyTask`, `clearTask`, and `destroy`. Methods that return a value (`getInstance`, `collectTelemetry`, `getConfig`, ...) are not commands — a queued call has nowhere to return to. Call those on `window.Bugdump` once the script has loaded.
+Any fire-and-forget method can be a command: `bugdump('identify', { email: '...' })`, `bugdump('open', { taskId: 42 })`, `bugdump('setContext', {...})`, plus `setTheme`, `reset`, `close`, `identifyTask`, `clearTask`, and `destroy`. Methods that return a value (`getInstance`, `collectTelemetry`, `getConfig`, ...) are not commands — a queued call has nowhere to return to. Call those on `window.Bugdump` once the script has loaded.
 
 ## How the SDK Loads
 
@@ -114,7 +114,7 @@ const bugdump = Bugdump.init({
 | ---------------------- | ----------------------------- | ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `apiKey`               | `string`                      | —                         | **Required.** Your Bugdump API key                                                                                                                                                                  |
 | `endpoint`             | `string`                      | `https://api.bugdump.com` | Custom API endpoint                                                                                                                                                                                 |
-| `theme`                | `'light' \| 'dark' \| 'auto'` | `'auto'`                  | Widget color theme. `auto` follows the user's OS preference                                                                                                                                         |
+| `theme`                | `'light' \| 'dark' \| 'auto'` | `'auto'`                  | Widget color theme. `auto` follows the user's OS preference. Change it later with `setTheme`                                                                                                        |
 | `position`             | `'bottom-right' \| 'bottom-left'` | `'bottom-right'`      | Corner the floating button and panel are anchored to                                                                                                                                                |
 | `hideButton`           | `boolean`                     | `false`                   | Hide the floating button and trigger the widget programmatically                                                                                                                                    |
 | `showReportLink`       | `boolean`                     | `false`                   | Show a link to the created report on the success screen with a copy button                                                                                                                          |
@@ -317,7 +317,7 @@ Use `data-*` attributes to configure the widget. All attributes are optional exc
 | ------------------------------ | -------------------------------- | ------------------------- | --------------------------------------------------------------------------------------- |
 | `data-api-key`                 | `apiKey`                         | —                         | **Required.** Your Bugdump API key                                                      |
 | `data-api-url`                 | `endpoint`                       | `https://api.bugdump.com` | Custom API endpoint                                                                     |
-| `data-theme`                   | `theme`                          | `auto`                    | Widget theme: `light`, `dark`, or `auto`                                                |
+| `data-theme`                   | `theme`                          | `auto`                    | Widget theme: `light`, `dark`, or `auto`. Change it later with `setTheme`               |
 | `data-position`                | `position`                       | `bottom-right`            | Widget corner: `bottom-right` or `bottom-left`                                          |
 | `data-hide-button`             | `hideButton`                     | `false`                   | Hide the floating button                                                                |
 | `data-show-report-link`        | `showReportLink`                 | `false`                   | Show a link to the created report on the success screen                                 |
@@ -344,6 +344,26 @@ The widget supports three theme modes:
 - **`dark`** — Always use the dark theme
 
 > **Note:** Your account plan may also restrict certain features server-side (e.g., screen recording is only available on Pro and Ultra plans). The widget respects both local config and server-side limits.
+
+#### Changing the theme at runtime
+
+`theme` / `data-theme` sets the theme the widget starts with. If your app has its own theme toggle, call `setTheme` whenever it changes: the widget switches immediately, an open panel included, and the screenshot editor uses the new theme the next time it opens. `auto` keeps following the OS preference.
+
+```html
+<script>
+  bugdump('setTheme', 'dark'); // 'light', 'dark' or 'auto'
+</script>
+```
+
+With the queue stub, `bugdump('setTheme', ...)` is safe to call before the SDK has loaded.
+
+```typescript
+// npm: pass the starting theme to init, then update it on every change
+const bugdump = Bugdump.init({ apiKey: 'your-api-key', theme: 'dark' });
+bugdump.setTheme('light');
+```
+
+Calling `setTheme` on the npm package before `init` throws, so always pass the starting theme to `init` as well.
 
 ### Custom Icon
 
@@ -657,6 +677,9 @@ bugdump.open({ taskId: 42 });
 
 // Close the report panel
 bugdump.close();
+
+// Switch the widget theme ('light', 'dark' or 'auto')
+bugdump.setTheme('dark');
 
 // Check if the panel is open
 bugdump.isWidgetOpen();

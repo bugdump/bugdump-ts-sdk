@@ -1,4 +1,4 @@
-import type { BugdumpConfig, BugdumpUserContext, ReportPayload, ReportResponse } from './types';
+import type { BugdumpConfig, BugdumpTheme, BugdumpUserContext, ReportPayload, ReportResponse } from './types';
 import { resolveConfig, type ResolvedBugdumpConfig } from './core/config';
 import { createInitialState, type SdkState } from './core/state';
 import { HttpClient } from './http-client';
@@ -128,6 +128,11 @@ export class Bugdump {
   setContext(context: Record<string, unknown>): void {
     this.ensureInitialized();
     this.state.customContext = { ...this.state.customContext, ...context };
+  }
+
+  setTheme(theme: BugdumpTheme): void {
+    this.ensureInitialized();
+    this.widget?.setTheme(theme);
   }
 
   open(options?: { taskId?: number }): void {

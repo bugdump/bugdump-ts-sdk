@@ -15,8 +15,22 @@ export function getAnnotationStyles(): string {
       --bd-error-bg: #fdeee9;
     }
 
+    :host(.bd-theme-dark) {
+      --bd-primary: #a78bfa;
+      --bd-primary-hover: #b9a4fb;
+      --bd-bg: #171922;
+      --bd-bg-secondary: #101319;
+      --bd-bg-hover: #1f2230;
+      --bd-border: rgba(230, 232, 238, 0.1);
+      --bd-text: #e6e8ee;
+      --bd-text-secondary: #8b91a1;
+      --bd-shadow: rgba(0, 0, 0, 0.45);
+      --bd-shadow-light: rgba(0, 0, 0, 0.25);
+      --bd-error-bg: #3a1414;
+    }
+
     @media (prefers-color-scheme: dark) {
-      :host {
+      :host(.bd-theme-auto) {
         --bd-primary: #a78bfa;
         --bd-primary-hover: #b9a4fb;
         --bd-bg: #171922;

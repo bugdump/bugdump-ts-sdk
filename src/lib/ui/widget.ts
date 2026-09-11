@@ -1,7 +1,7 @@
 import { createStyles } from './styles';
 import { closeIcon, resolveIcon, bugIcon } from './icons';
 import { Panel } from './panel';
-import { containKeyboardEvents } from './panel-utils';
+import { containKeyboardEvents, getThemeClass } from './panel-utils';
 import type { PanelSubmitData, PanelFeatures } from './panel';
 import type { BugdumpPosition, BugdumpTheme, BugdumpTranslations, ReportResponse } from '../types';
 import type { SessionReplayCollector } from '../collectors/session-replay';
@@ -43,7 +43,6 @@ export class Widget {
 
     this.shadowRoot = this.host.attachShadow({ mode: 'closed' });
     containKeyboardEvents(this.shadowRoot);
-    this.applyTheme(options?.theme);
     this.applyPosition(options?.position);
 
     const style = document.createElement('style');
@@ -70,6 +69,7 @@ export class Widget {
     this.dock.appendChild(this.triggerBtn);
 
     this.panel = new Panel(this.shadowRoot, options?.features, options?.translations);
+    this.setTheme(options?.theme);
     this.anchor.appendChild(this.panel.getElement());
     this.anchor.appendChild(this.dock);
     this.shadowRoot.appendChild(this.anchor);
@@ -151,6 +151,15 @@ export class Widget {
     this.panel.setShowReportLink(show);
   }
 
+  setTheme(theme?: BugdumpTheme): void {
+    this.host.classList.remove('bd-theme-dark', 'bd-theme-auto');
+    const themeClass = getThemeClass(theme);
+    if (themeClass) {
+      this.host.classList.add(themeClass);
+    }
+    this.panel.setTheme(theme);
+  }
+
   toggle(): void {
     if (this.open) {
       this.close();
@@ -196,15 +205,6 @@ export class Widget {
     this.destroyed = true;
     this.panel.destroy();
     this.host.remove();
-  }
-
-  private applyTheme(theme?: BugdumpTheme): void {
-    this.host.classList.remove('bd-theme-dark', 'bd-theme-auto');
-    if (theme === 'dark') {
-      this.host.classList.add('bd-theme-dark');
-    } else if (theme === 'auto') {
-      this.host.classList.add('bd-theme-auto');
-    }
   }
 
   private applyPosition(position?: BugdumpPosition): void {

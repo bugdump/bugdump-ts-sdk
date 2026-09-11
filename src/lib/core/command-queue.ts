@@ -23,6 +23,7 @@ const INSTANCE_COMMANDS = [
   'identify',
   'reset',
   'setContext',
+  'setTheme',
   'open',
   'close',
   'identifyTask',
