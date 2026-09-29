@@ -10,6 +10,7 @@ Official TypeScript SDK for [Bugdump](https://bugdump.com) - embed a bug reporti
 - **TypeScript-first** - Full type definitions out of the box
 - **Shadow DOM isolated** - Widget styles never leak into your app
 - **Auto-init** - Single script tag with `data-api-key`, no JS required
+- **Your own form** - Send reports from your own UI with `submit()`, telemetry included
 - **Report link** - Optionally show a direct link to the created report after submission with a copy button
 - **Public portal link** - Automatically shows a "View reports" link in the widget footer when the public portal is enabled for your project
 
@@ -63,7 +64,7 @@ const bugdump = Bugdump.init({
 
 The three-line stub makes `bugdump(...)` safe to call immediately: until the SDK arrives it queues calls, and when the script loads the SDK replays them in order and replaces the stub with a live dispatcher — so the same `bugdump(...)` calls work before and after load. Without it, an inline `Bugdump.init(...)` would race the `async` download and throw `Bugdump is not defined`.
 
-Any fire-and-forget method can be a command: `bugdump('identify', { email: '...' })`, `bugdump('open', { taskId: 42 })`, `bugdump('setContext', {...})`, plus `setTheme`, `reset`, `close`, `identifyTask`, `clearTask`, and `destroy`. Methods that return a value (`getInstance`, `collectTelemetry`, `getConfig`, ...) are not commands — a queued call has nowhere to return to. Call those on `window.Bugdump` once the script has loaded.
+Any fire-and-forget method can be a command: `bugdump('identify', { email: '...' })`, `bugdump('open', { taskId: 42 })`, `bugdump('setContext', {...})`, plus `setTheme`, `reset`, `close`, `identifyTask`, `clearTask`, and `destroy`. Methods that return a value (`getInstance`, `submit`, `collectTelemetry`, `getConfig`, ...) are not commands — a queued call has nowhere to return to. Call those on `window.Bugdump` once the script has loaded.
 
 ## How the SDK Loads
 
@@ -545,6 +546,37 @@ function App() {
 }
 ```
 
+## Your Own Report Form
+
+Build the form yourself — in your own dialog, with your own components — and send what it collects with `submit()`. The widget's panel is never shown; `hideButton: true` keeps its floating button off the page as well.
+
+```typescript
+const bugdump = Bugdump.init({ apiKey: 'your-api-key', hideButton: true });
+
+const { taskPublicId } = await bugdump.submit({
+  description: 'The checkout button does nothing',
+  reporterName: 'Jane Doe',
+  reporterEmail: 'jane@example.com',
+  priority: 'High',
+  files: Array.from(fileInput.files ?? []),
+});
+```
+
+Only `description` is required. Everything the widget attaches is attached here too: console logs, network requests, recent user actions, performance data, the page URL, browser and viewport, your `setContext()` data, and the session replay when your plan includes it.
+
+| Option          | Type     | Description                                                                                                                                                               |
+| --------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `description`   | `string` | **Required.** The report text, up to 10,000 characters                                                                                                                    |
+| `reporterName`  | `string` | Falls back to the name passed to `identify()`                                                                                                                             |
+| `reporterEmail` | `string` | Must be a valid email. Falls back to the email passed to `identify()`                                                                                                     |
+| `priority`      | `string` | A priority label as your project defines it, e.g. `"High"`, matched case-insensitively. A label the project does not have is ignored, and so is any priority on a report attached to an existing task |
+| `taskId`        | `number` | Attach the report to an existing task by its public ID instead of creating a new one. Falls back to `identifyTask()`                                                     |
+| `files`         | `Blob[]` | Uploaded as attachments. A `File` keeps its name                                                                                                                          |
+
+`submit()` resolves with `{ id, taskId, taskPublicId }` and rejects with a `BugdumpApiError` when the report is refused (see [Error Handling](#error-handling)). Disable your send button while it runs: each file is uploaded in its own request before the report, and every request counts toward your project's per-minute widget rate limit.
+
+`submit()` returns a promise, so it is not a queued command. From a script tag, call it on the instance once the SDK has loaded: `window.Bugdump.getInstance()?.submit({ description })`.
+
 ## Identify Users
 
 Associate bug reports with your authenticated users:
@@ -684,6 +716,9 @@ bugdump.setTheme('dark');
 // Check if the panel is open
 bugdump.isWidgetOpen();
 
+// Send a report from your own form (see Your Own Report Form)
+await bugdump.submit({ description: 'The checkout button does nothing' });
+
 // Collect telemetry snapshot without submitting
 const telemetry = bugdump.collectTelemetry();
 
@@ -735,7 +770,7 @@ interface TelemetrySnapshot {
 import { Bugdump, BugdumpApiError } from '@bugdump/sdk';
 
 try {
-  await bugdump.getHttpClient().submitReport(payload);
+  await bugdump.submit({ description });
 } catch (error) {
   if (error instanceof BugdumpApiError) {
     console.error(`Error ${error.statusCode}: ${error.message}`);
@@ -759,6 +794,7 @@ import type {
   NetworkFilterOptions,
   ReportPayload,
   ReportResponse,
+  SubmitOptions,
   TelemetrySnapshot,
   ConsoleLogEntry,
   NetworkRequestEntry,

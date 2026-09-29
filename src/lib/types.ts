@@ -128,7 +128,8 @@ export interface UserAction {
 export interface ReportPayload {
   taskId?: number;
   description: string;
-  priority?: 'low' | 'medium' | 'high' | 'critical';
+  /** A priority option label as the project defines it, e.g. "High". Matched case-insensitively; one the project does not have is ignored and the report is still filed. */
+  priority?: string;
   reporterName?: string;
   reporterEmail?: string;
   reporterExternalId?: string;
@@ -153,6 +154,20 @@ export interface ReportPayload {
     type: 'screenshot' | 'recording' | 'voice_note' | 'session_replay' | 'file';
     metadata?: Record<string, unknown>;
   }>;
+}
+
+export interface SubmitOptions {
+  description: string;
+  /** Falls back to the name passed to `identify()`. */
+  reporterName?: string;
+  /** Falls back to the email passed to `identify()`. */
+  reporterEmail?: string;
+  /** A priority option label as the project defines it, e.g. "High". Matched case-insensitively; one the project does not have is ignored and the report is still filed. */
+  priority?: string;
+  /** Public ID of an existing task to attach the report to. Falls back to `identifyTask()` / `open({ taskId })`. */
+  taskId?: number;
+  /** Uploaded as file attachments. A `File` keeps its name; a plain `Blob` is named "attachment". */
+  files?: Blob[];
 }
 
 export interface ReportResponse {

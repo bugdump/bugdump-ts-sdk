@@ -1579,4 +1579,3 @@ export class Panel {
     }
   }
 }
-
