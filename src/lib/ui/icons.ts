@@ -59,7 +59,7 @@ export function resolveIcon(icon?: string): string {
   }
 
   if (icon.startsWith('http://') || icon.startsWith('https://') || icon.startsWith('//') || icon.startsWith('data:')) {
-    return `<img src="${icon}" alt="icon" style="width:24px;height:24px;object-fit:contain;" />`;
+    return `<img src="${icon}" alt="" style="width:24px;height:24px;object-fit:contain;" />`;
   }
 
   return `<span style="font-size:24px;line-height:1;">${icon}</span>`;

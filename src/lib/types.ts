@@ -14,6 +14,8 @@ export type BugdumpTheme = 'light' | 'dark' | 'auto';
 
 export type BugdumpPosition = 'bottom-right' | 'bottom-left';
 
+export type BugdumpLocale = 'en' | 'ru' | 'es' | 'fr' | 'pt';
+
 export interface BugdumpTranslations {
   title?: string;
   triggerTitle?: string;
@@ -51,6 +53,22 @@ export interface BugdumpTranslations {
   copied?: string;
   closeButton?: string;
   submitAnother?: string;
+  minimizePanel?: string;
+  closePanel?: string;
+  toggleMicrophone?: string;
+  selectMicrophone?: string;
+  microphone?: string;
+  colorRed?: string;
+  colorYellow?: string;
+  colorGreen?: string;
+  colorBlue?: string;
+  colorWhite?: string;
+  removeAttachment?: string;
+  uploading?: string;
+  viewReports?: string;
+  poweredBy?: string;
+  dismissBubble?: string;
+  textPlaceholder?: string;
 }
 
 export type BugdumpIcon = 'bug' | 'chat' | 'feedback' | 'lightning';
@@ -98,6 +116,7 @@ export interface BugdumpConfig {
   showReportLink?: boolean;
   theme?: BugdumpTheme;
   position?: BugdumpPosition;
+  locale?: 'auto' | BugdumpLocale | (string & {});
   icon?: string;
   bubbleText?: string;
   features?: BugdumpFeatures;

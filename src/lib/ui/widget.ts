@@ -20,6 +20,7 @@ export class Widget {
   private open = false;
   private minimized = false;
   private triggerIconHtml: string;
+  private dismissLabel: string;
   private destroyed = false;
 
   private onSubmit: ((data: PanelSubmitData) => Promise<ReportResponse>) | null = null;
@@ -31,6 +32,7 @@ export class Widget {
     features?: PanelFeatures;
     theme?: BugdumpTheme;
     position?: BugdumpPosition;
+    locale?: string;
     translations?: BugdumpTranslations;
   }) {
     this.host = document.createElement('bugdump-widget');
@@ -44,6 +46,9 @@ export class Widget {
     this.shadowRoot = this.host.attachShadow({ mode: 'closed' });
     containKeyboardEvents(this.shadowRoot);
     this.applyPosition(options?.position);
+    if (options?.locale) {
+      this.host.setAttribute('lang', options.locale);
+    }
 
     const style = document.createElement('style');
     style.textContent = createStyles();
@@ -59,6 +64,7 @@ export class Widget {
     }
 
     this.triggerIconHtml = options?.icon ? resolveIcon(options.icon) : bugIcon();
+    this.dismissLabel = options?.translations?.dismissBubble ?? 'Dismiss';
     this.triggerBtn = this.createTriggerButton(options?.translations?.triggerTitle ?? options?.translations?.title);
 
     const bubbleText = options?.bubbleText?.trim();
@@ -233,7 +239,7 @@ export class Widget {
 
     const closeBtn = document.createElement('button');
     closeBtn.className = 'bd-bubble__close';
-    closeBtn.setAttribute('aria-label', 'Dismiss');
+    closeBtn.setAttribute('aria-label', this.dismissLabel);
     closeBtn.innerHTML = closeIcon();
     closeBtn.addEventListener('click', () => {
       markBubbleDismissed();

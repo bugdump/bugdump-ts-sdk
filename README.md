@@ -10,6 +10,7 @@ Official TypeScript SDK for [Bugdump](https://bugdump.com) - embed a bug reporti
 - **TypeScript-first** - Full type definitions out of the box
 - **Shadow DOM isolated** - Widget styles never leak into your app
 - **Auto-init** - Single script tag with `data-api-key`, no JS required
+- **Five languages built in** - English, Russian, Spanish, French and Portuguese, picked from the page or browser language, with per-string overrides
 - **Your own form** - Send reports from your own UI with `submit()`, telemetry included
 - **Report link** - Optionally show a direct link to the created report after submission with a copy button
 - **Public portal link** - Automatically shows a "View reports" link in the widget footer when the public portal is enabled for your project
@@ -95,6 +96,7 @@ const bugdump = Bugdump.init({
   endpoint: 'https://api.bugdump.com', // Custom API endpoint
   theme: 'auto', // Widget color theme
   position: 'bottom-right', // Corner the widget is anchored to
+  locale: 'auto', // Widget language: 'auto', 'en', 'ru', 'es', 'fr', 'pt' or any tag
   icon: 'chat', // Trigger button icon
   hideButton: false, // Hide the floating button
   showReportLink: false, // Show report link after submission
@@ -117,13 +119,14 @@ const bugdump = Bugdump.init({
 | `endpoint`             | `string`                      | `https://api.bugdump.com` | Custom API endpoint                                                                                                                                                                                 |
 | `theme`                | `'light' \| 'dark' \| 'auto'` | `'auto'`                  | Widget color theme. `auto` follows the user's OS preference. Change it later with `setTheme`                                                                                                        |
 | `position`             | `'bottom-right' \| 'bottom-left'` | `'bottom-right'`      | Corner the floating button and panel are anchored to                                                                                                                                                |
+| `locale`               | `string`                      | `'auto'`                  | Widget language (see [Languages and translations](#languages-and-translations) below)                                                                                                                |
 | `hideButton`           | `boolean`                     | `false`                   | Hide the floating button and trigger the widget programmatically                                                                                                                                    |
 | `showReportLink`       | `boolean`                     | `false`                   | Show a link to the created report on the success screen with a copy button                                                                                                                          |
 | `icon`                 | `string`                      | `'chat'`                  | Custom trigger button icon (see [Custom Icon](#custom-icon) below)                                                                                                                                  |
 | `bubbleText`           | `string`                      | —                         | Show a dismissible teaser bubble next to the floating button (e.g. `"Found a bug?"`). Clicking it opens the widget; dismissing it is remembered in `localStorage`. Ignored when `hideButton` is set |
 | `captureNetworkBodies` | `boolean`                     | `false`                   | Include request/response bodies in network logs                                                                                                                                                     |
 | `features`             | `object`                      | all `true`                | Enable/disable widget features (see below)                                                                                                                                                          |
-| `translations`         | `object`                      | English defaults          | Override widget UI strings (see below)                                                                                                                                                              |
+| `translations`         | `object`                      | —                         | Override widget UI strings on top of the language (see below)                                                                                                                                       |
 
 #### Feature Toggles
 
@@ -137,22 +140,34 @@ const bugdump = Bugdump.init({
 | `features.attachments`           | `true`             | File attachment button                                                                                                                                             |
 | `features.allowTaskAttach`       | `false`            | Show an "Attach to task" toggle so reporters can associate the report with an existing task by its public ID                                                       |
 
-#### Translations
+#### Languages and translations
 
-Customize any widget UI string by passing a `translations` object. Only override the keys you need — everything else falls back to English defaults.
+The widget ships in English (`en`), Russian (`ru`), Spanish (`es`), French (`fr`) and Portuguese (`pt`, Brazilian). The `locale` option picks one:
+
+| `locale`                          | Language                                                                                                  |
+| --------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| omitted or `'auto'`               | The first shipped language from the page's `<html lang>`, then the visitor's browser languages, else English |
+| `'fr'`, `'fr-CA'`, `'FR'`         | French. Only the part before `-` or `_` is matched, case-insensitively                                     |
+| a language that is not shipped    | English strings, unless you pass your own in `translations`                                                |
+
+`translations` is applied on top of the picked language, so you can change a few strings in any language, or bring a whole language of your own:
 
 ```typescript
-const bugdump = Bugdump.init({
+// Change a few strings
+Bugdump.init({ apiKey: 'your-api-key', translations: { title: 'Report a bug', sendButton: 'Send report' } });
+
+// Always English, whatever the page or browser language
+Bugdump.init({ apiKey: 'your-api-key', locale: 'en' });
+
+// A language the SDK does not ship: strings you leave out fall back to English
+Bugdump.init({
   apiKey: 'your-api-key',
-  translations: {
-    title: 'Сообщить об ошибке',
-    descriptionPlaceholder: 'Опишите найденную ошибку...',
-    sendButton: 'Отправить отчёт',
-    successTitle: 'Отчёт отправлен!',
-    successSubtitle: 'Спасибо за ваш отзыв.',
-  },
+  locale: 'de',
+  translations: { title: 'Feedback senden', sendButton: 'Senden' /* … */ },
 });
 ```
+
+`Bugdump.getInstance()?.getConfig()?.locale` returns the language the widget uses: the tag you passed, or the one `auto` picked. The widget sets it as its `lang` attribute. The language is read once at `init`; to switch it in a single-page app, call `destroy()` and `init()` again. `bubbleText` is your own text and is not translated.
 
 | Key                       | Default                                         | Description                                                                                   |
 | ------------------------- | ----------------------------------------------- | --------------------------------------------------------------------------------------------- |
@@ -176,7 +191,7 @@ const bugdump = Bugdump.init({
 | `successSubtitle`         | `Thank you for your feedback.`                  | Success message subtitle                                                                      |
 | `errorMessage`            | `Something went wrong. Please try again.`       | Error message                                                                                 |
 | `emptyDescriptionMessage` | `Please describe what happened before sending.` | Validation message shown when submitting with an empty description                            |
-| `closeButton`             | `Close`                                         | Close button aria-label                                                                       |
+| `closeButton`             | `Close`                                         | Close button on the success screen                                                            |
 | `submitAnother`           | `Submit another`                                | Button on the success screen to file another report                                           |
 | `arrowTool`               | `Arrow`                                         | Annotation arrow tool tooltip                                                                 |
 | `rectangleTool`           | `Rectangle`                                     | Annotation rectangle tool tooltip                                                             |
@@ -192,6 +207,22 @@ const bugdump = Bugdump.init({
 | `badgeVoiceNote`          | `Voice note`                                    | Badge label shown on voice note attachments                                                   |
 | `copyLink`                | `Copy link`                                     | Copy report link button label (shown when `showReportLink` is enabled)                        |
 | `copied`                  | `Copied!`                                       | Feedback text after copying the report link                                                   |
+| `minimizePanel`           | `Minimize`                                      | Panel minimize button aria-label                                                              |
+| `closePanel`              | `Close`                                         | Panel close button aria-label                                                                 |
+| `toggleMicrophone`        | `Toggle microphone`                             | Recording bar microphone button aria-label                                                    |
+| `selectMicrophone`        | `Select microphone`                             | Recording bar microphone picker aria-label                                                    |
+| `microphone`              | `Microphone`                                    | Name of an unlabeled microphone; the widget appends its number                                |
+| `colorRed`                | `Red`                                           | Annotation color tooltip                                                                      |
+| `colorYellow`             | `Yellow`                                        | Annotation color tooltip                                                                      |
+| `colorGreen`              | `Green`                                         | Annotation color tooltip                                                                      |
+| `colorBlue`               | `Blue`                                          | Annotation color tooltip                                                                      |
+| `colorWhite`              | `White`                                         | Annotation color tooltip                                                                      |
+| `removeAttachment`        | `Remove`                                        | Attachment remove button aria-label                                                           |
+| `uploading`               | `Uploading`                                     | Send button while uploading; the widget appends the file count and percentage                 |
+| `viewReports`             | `View reports`                                  | Footer link to the public portal                                                              |
+| `poweredBy`               | `Powered by`                                    | Footer branding; the widget appends "Bugdump"                                                 |
+| `dismissBubble`           | `Dismiss`                                       | Teaser bubble close button aria-label                                                         |
+| `textPlaceholder`         | `Type text…`                                    | Annotation text input placeholder                                                             |
 
 ## Filtering Noise
 
@@ -298,6 +329,7 @@ Use `data-*` attributes to configure the widget. All attributes are optional exc
   data-api-url="https://api.bugdump.com"
   data-theme="auto"
   data-position="bottom-right"
+  data-locale="auto"
   data-icon="chat"
   data-bubble-text="Found a bug?"
   data-hide-button="false"
@@ -320,6 +352,7 @@ Use `data-*` attributes to configure the widget. All attributes are optional exc
 | `data-api-url`                 | `endpoint`                       | `https://api.bugdump.com` | Custom API endpoint                                                                     |
 | `data-theme`                   | `theme`                          | `auto`                    | Widget theme: `light`, `dark`, or `auto`. Change it later with `setTheme`               |
 | `data-position`                | `position`                       | `bottom-right`            | Widget corner: `bottom-right` or `bottom-left`                                          |
+| `data-locale`                  | `locale`                         | `auto`                    | Widget language: `auto`, `en`, `ru`, `es`, `fr`, `pt` or any tag                        |
 | `data-hide-button`             | `hideButton`                     | `false`                   | Hide the floating button                                                                |
 | `data-show-report-link`        | `showReportLink`                 | `false`                   | Show a link to the created report on the success screen                                 |
 | `data-icon`                    | `icon`                           | `chat`                    | Custom trigger button icon (predefined name, URL, SVG, or emoji)                        |
@@ -785,6 +818,7 @@ The SDK exports all types you need:
 ```typescript
 import type {
   BugdumpConfig,
+  BugdumpLocale,
   BugdumpPosition,
   BugdumpTheme,
   BugdumpTranslations,

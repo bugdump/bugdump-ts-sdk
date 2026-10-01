@@ -30,6 +30,7 @@ export function runAutoInit(): void {
     if (rawPosition && !position) {
       console.warn(`[Bugdump] Auto-init: invalid data-position "${rawPosition}", ignoring.`);
     }
+    const locale = el.getAttribute('data-locale');
     const icon = el.getAttribute('data-icon');
     const bubbleText = el.getAttribute('data-bubble-text');
 
@@ -74,6 +75,7 @@ export function runAutoInit(): void {
       hideButton,
       theme: theme || '(default)',
       position: position || '(default)',
+      locale: locale || '(default)',
       features,
     });
 
@@ -86,6 +88,7 @@ export function runAutoInit(): void {
         ...(showReportLink && { showReportLink }),
         ...(theme && { theme }),
         ...(position && { position }),
+        ...(locale && { locale }),
         ...(icon && { icon }),
         ...(bubbleText && { bubbleText }),
         ...(Object.keys(features).length > 0 && { features }),

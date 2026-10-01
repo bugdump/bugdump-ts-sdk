@@ -25,7 +25,7 @@ import { captureScreenshot, captureScreenshotNative } from '../capture/screensho
 import type { ScreenshotResult } from '../capture/screenshot';
 import { AnnotationOverlay, renderOperationsToCanvas } from '../capture/annotation';
 import type { TextOperation } from '../capture/annotation';
-import { DEFAULT_TRANSLATIONS } from '../core/config';
+import { en } from '../i18n/en';
 import type { BugdumpTheme, BugdumpTranslations, CaptureMethod, ReportResponse, UserAction } from '../types';
 import type { SessionReplayCollector } from '../collectors/session-replay';
 import { trimReplayToBudget, SESSION_REPLAY_WINDOW_MS } from '../collectors/session-replay';
@@ -117,7 +117,7 @@ export class Panel {
       attachments: true,
       allowTaskAttach: false,
     };
-    this.t = { ...DEFAULT_TRANSLATIONS, ...translations };
+    this.t = { ...en, ...translations };
     this.elements = this.createDOM();
     this.applyFeatures();
     this.bindEvents();
@@ -173,7 +173,7 @@ export class Panel {
         link.target = '_blank';
         link.rel = 'noopener';
         link.className = 'bd-branding';
-        link.textContent = 'View reports';
+        link.textContent = this.t.viewReports;
         linksContainer.insertBefore(link, linksContainer.firstChild);
       }
     } else if (existing) {
@@ -374,8 +374,8 @@ export class Panel {
           <span class="bd-panel__title">${this.t.title}</span>
         </div>
         <div class="bd-panel__header-actions">
-          <button class="bd-panel__minimize" aria-label="Minimize">${minimizeIcon()}</button>
-          <button class="bd-panel__close" aria-label="Close">${closeIcon()}</button>
+          <button class="bd-panel__minimize" aria-label="${this.t.minimizePanel}">${minimizeIcon()}</button>
+          <button class="bd-panel__close" aria-label="${this.t.closePanel}">${closeIcon()}</button>
         </div>
       </div>
       <div class="bd-panel__body" data-role="body">
@@ -407,8 +407,8 @@ export class Panel {
         <span class="bd-recording-bar__timer" data-role="recording-bar-timer">0:00 / 3:00</span>
         <canvas class="bd-recording-bar__canvas" data-role="recording-bar-canvas" width="80" height="28"></canvas>
         <div class="bd-recording-bar__mic-group">
-          <button class="bd-recording-bar__mic" data-role="recording-bar-mic" aria-label="Toggle microphone">${micIcon()}</button>
-          <button class="bd-recording-bar__mic-select" data-role="recording-bar-mic-select" aria-label="Select microphone">${chevronIcon()}</button>
+          <button class="bd-recording-bar__mic" data-role="recording-bar-mic" aria-label="${this.t.toggleMicrophone}">${micIcon()}</button>
+          <button class="bd-recording-bar__mic-select" data-role="recording-bar-mic-select" aria-label="${this.t.selectMicrophone}">${chevronIcon()}</button>
         </div>
         <button class="bd-recording-bar__start" data-role="recording-bar-start">${videoIcon()} ${this.t.startRecording}</button>
         <button class="bd-recording-bar__stop" data-role="recording-bar-stop">${stopIcon()} ${this.t.stop}</button>
@@ -425,7 +425,7 @@ export class Panel {
       </div>
       <div class="bd-panel__footer">
         <div class="bd-footer__links">
-          <a class="bd-branding" data-role="branding" href="https://bugdump.com?ref=widget" target="_blank" rel="noopener">Powered by Bugdump</a>
+          <a class="bd-branding" data-role="branding" href="https://bugdump.com?ref=widget" target="_blank" rel="noopener">${this.t.poweredBy} Bugdump</a>
         </div>
         <button class="bd-send-btn" data-action="send">${sendIcon()} ${this.t.sendButton}</button>
       </div>
@@ -656,11 +656,11 @@ export class Panel {
       </div>
       <div class="bd-annotation-toolbar__divider"></div>
       <div class="bd-annotation-toolbar__colors">
-        <button class="bd-annotation-color-btn active" data-color="#ff0000" style="background:#ff0000" title="Red"></button>
-        <button class="bd-annotation-color-btn" data-color="#ffcc00" style="background:#ffcc00" title="Yellow"></button>
-        <button class="bd-annotation-color-btn" data-color="#00cc44" style="background:#00cc44" title="Green"></button>
-        <button class="bd-annotation-color-btn" data-color="#0099ff" style="background:#0099ff" title="Blue"></button>
-        <button class="bd-annotation-color-btn" data-color="#ffffff" style="background:#ffffff" title="White"></button>
+        <button class="bd-annotation-color-btn active" data-color="#ff0000" style="background:#ff0000" title="${this.t.colorRed}"></button>
+        <button class="bd-annotation-color-btn" data-color="#ffcc00" style="background:#ffcc00" title="${this.t.colorYellow}"></button>
+        <button class="bd-annotation-color-btn" data-color="#00cc44" style="background:#00cc44" title="${this.t.colorGreen}"></button>
+        <button class="bd-annotation-color-btn" data-color="#0099ff" style="background:#0099ff" title="${this.t.colorBlue}"></button>
+        <button class="bd-annotation-color-btn" data-color="#ffffff" style="background:#ffffff" title="${this.t.colorWhite}"></button>
       </div>
       <div class="bd-annotation-toolbar__divider"></div>
       <button class="bd-annotation-action-btn" data-annotation-action="undo" title="${this.t.undo}">${undoIcon()}</button>
@@ -676,7 +676,7 @@ export class Panel {
     innerRoot.appendChild(canvasWrap);
     document.body.appendChild(this.annotationContainer);
 
-    this.annotationOverlay = new AnnotationOverlay(canvasWrap, width, height);
+    this.annotationOverlay = new AnnotationOverlay(canvasWrap, width, height, this.t.textPlaceholder);
     this.annotationOverlay.setScreenshotImage(image);
 
     toolbar.addEventListener('click', (e) => {
@@ -1035,7 +1035,7 @@ export class Panel {
       if (device.deviceId === this.selectedMicDeviceId) {
         item.classList.add('bd-mic-dropdown__item--active');
       }
-      item.textContent = device.label || `Microphone ${devices.indexOf(device) + 1}`;
+      item.textContent = device.label || `${this.t.microphone} ${devices.indexOf(device) + 1}`;
       item.addEventListener('click', () => {
         this.closeMicDeviceDropdown();
         this.selectedMicDeviceId = device.deviceId;
@@ -1441,7 +1441,7 @@ export class Panel {
       const removeBtn = document.createElement('button');
       removeBtn.className = 'bd-attachment__remove';
       removeBtn.dataset.removeId = att.id;
-      removeBtn.setAttribute('aria-label', 'Remove');
+      removeBtn.setAttribute('aria-label', this.t.removeAttachment);
       removeBtn.innerHTML = xSmallIcon();
       el.appendChild(removeBtn);
 
@@ -1487,7 +1487,7 @@ export class Panel {
   setUploadProgress(current: number, total: number, filePercent: number): void {
     if (total === 0) return;
     const overallPercent = Math.round(((current - 1 + filePercent / 100) / total) * 100);
-    this.setSendBtnLabel(`Uploading ${current}/${total}… ${overallPercent}%`);
+    this.setSendBtnLabel(`${this.t.uploading} ${current}/${total}… ${overallPercent}%`);
   }
 
   private setSendBtnLabel(label: string): void {

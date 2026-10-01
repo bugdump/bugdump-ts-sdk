@@ -1,7 +1,8 @@
-import type { BugdumpConfig, BugdumpFeatures, BugdumpPosition, BugdumpTranslations, CaptureMethod } from '../types';
+import type { BugdumpConfig, BugdumpFeatures, BugdumpPosition, CaptureMethod } from '../types';
+import { LOCALES, detectLanguages, findLocale, resolveLocale } from '../i18n';
 
-export type ResolvedBugdumpConfig = Required<Omit<BugdumpConfig, 'consoleFilter' | 'networkFilter'>> &
-  Pick<BugdumpConfig, 'consoleFilter' | 'networkFilter'>;
+export type ResolvedBugdumpConfig = Required<Omit<BugdumpConfig, 'consoleFilter' | 'networkFilter' | 'locale'>> &
+  Pick<BugdumpConfig, 'consoleFilter' | 'networkFilter'> & { locale: string };
 
 const DEFAULT_ENDPOINT = 'https://api.bugdump.com';
 
@@ -17,46 +18,10 @@ const DEFAULT_FEATURES: Required<BugdumpFeatures> = {
   allowTaskAttach: false,
 };
 
-export const DEFAULT_TRANSLATIONS: Required<BugdumpTranslations> = {
-  title: 'Send feedback',
-  triggerTitle: 'Send feedback',
-  descriptionPlaceholder: "What's on your mind?",
-  attachButton: 'Attach',
-  screenshotButton: 'Screenshot',
-  recordButton: 'Record',
-  startRecording: 'Record',
-  sendButton: 'Send',
-  reporterToggle: 'Reporter info',
-  namePlaceholder: 'Your name',
-  emailPlaceholder: 'Your email',
-  taskAttachToggle: 'Attach to task',
-  taskIdPlaceholder: 'Task ID',
-  capturing: 'Capturing...',
-  stop: 'Stop',
-  sending: 'Sending...',
-  successTitle: 'Feedback sent!',
-  successSubtitle: 'Thank you for your feedback.',
-  errorMessage: 'Something went wrong. Please try again.',
-  emptyDescriptionMessage: 'Please describe what happened before sending.',
-  arrowTool: 'Arrow',
-  rectangleTool: 'Rectangle',
-  drawTool: 'Draw',
-  textTool: 'Text',
-  blurTool: 'Blur',
-  undo: 'Undo',
-  cancel: 'Cancel',
-  done: 'Done',
-  badgeScreenshot: 'Screenshot',
-  badgeRecording: 'Recording',
-  badgeReplay: 'Replay',
-  badgeVoiceNote: 'Voice note',
-  copyLink: 'Copy link',
-  copied: 'Copied!',
-  closeButton: 'Close',
-  submitAnother: 'Submit another',
-};
-
 export function resolveConfig(config: BugdumpConfig): ResolvedBugdumpConfig {
+  const locale = resolveLocale(config.locale, detectLanguages());
+  const pack = LOCALES[findLocale(locale) ?? 'en'];
+
   return {
     apiKey: config.apiKey,
     endpoint: (config.endpoint || DEFAULT_ENDPOINT).replace(/\/+$/, ''),
@@ -65,15 +30,15 @@ export function resolveConfig(config: BugdumpConfig): ResolvedBugdumpConfig {
     showReportLink: config.showReportLink ?? false,
     theme: config.theme ?? 'auto',
     position: config.position ?? 'bottom-right',
+    locale,
     icon: config.icon ?? '',
     bubbleText: config.bubbleText ?? '',
     features: { ...DEFAULT_FEATURES, ...config.features },
     translations: {
-      ...DEFAULT_TRANSLATIONS,
+      ...pack,
       ...config.translations,
       // A custom panel title doubles as the trigger tooltip unless overridden explicitly
-      triggerTitle:
-        config.translations?.triggerTitle ?? config.translations?.title ?? DEFAULT_TRANSLATIONS.triggerTitle,
+      triggerTitle: config.translations?.triggerTitle ?? config.translations?.title ?? pack.triggerTitle,
     },
     consoleFilter: config.consoleFilter,
     networkFilter: config.networkFilter,

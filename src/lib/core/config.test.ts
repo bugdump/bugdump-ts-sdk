@@ -45,4 +45,30 @@ describe('resolveConfig', () => {
     ).toBe('Click me');
     expect(resolveConfig({ apiKey: 'k' }).translations.triggerTitle).toBe('Send feedback');
   });
+
+  it('uses the pack of an explicit locale and declares it', () => {
+    const resolved = resolveConfig({ apiKey: 'k', locale: 'fr' });
+
+    expect(resolved.locale).toBe('fr');
+    expect(resolved.translations.title).toBe('Envoyer un retour');
+    expect(resolved.translations.triggerTitle).toBe('Envoyer un retour');
+  });
+
+  it('falls back to English strings for a locale that is not shipped, but still declares it', () => {
+    const resolved = resolveConfig({ apiKey: 'k', locale: 'de' });
+
+    expect(resolved.locale).toBe('de');
+    expect(resolved.translations.sendButton).toBe('Send');
+  });
+
+  it('applies translation overrides on top of the locale pack', () => {
+    const resolved = resolveConfig({ apiKey: 'k', locale: 'ru', translations: { title: 'Сообщить об ошибке' } });
+
+    expect(resolved.translations.title).toBe('Сообщить об ошибке');
+    expect(resolved.translations.sendButton).toBe('Отправить');
+  });
+
+  it('declares English when nothing is detected', () => {
+    expect(resolveConfig({ apiKey: 'k' }).locale).toBe('en');
+  });
 });

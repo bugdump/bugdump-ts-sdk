@@ -223,6 +223,7 @@ export class AnnotationOverlay {
     private container: HTMLElement,
     private width: number,
     private height: number,
+    private textPlaceholder = 'Type text…',
   ) {
     this.canvas = document.createElement('canvas');
     this.canvas.width = width;
@@ -464,7 +465,7 @@ export class AnnotationOverlay {
 
     const input = document.createElement('input');
     input.type = 'text';
-    input.placeholder = 'Type text…';
+    input.placeholder = this.textPlaceholder;
     input.style.cssText = `
       position:fixed;left:${screenX}px;top:${screenY}px;
       font-size:${this.fontSize}px;font-family:sans-serif;
