@@ -219,11 +219,43 @@ export function getAnnotationStyles(): string {
     }
 
     @media (max-width: 440px) {
+      /* Wraps instead of running off-screen: tools and colors first, then undo with
+         cancel and done, which take 40% each so they always share a row. */
       .bd-annotation-toolbar {
         right: 8px;
         left: 8px;
-        bottom: 76px;
+        bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 8px;
+        padding: 10px 12px;
         border-radius: 14px;
+      }
+
+      .bd-annotation-toolbar__divider {
+        display: none;
+      }
+
+      .bd-annotation-tool-btn,
+      .bd-annotation-action-btn {
+        width: 36px;
+        height: 36px;
+      }
+
+      .bd-annotation-toolbar__colors {
+        gap: 6px;
+      }
+
+      .bd-annotation-color-btn {
+        width: 24px;
+        height: 24px;
+      }
+
+      .bd-annotation-toolbar__cancel,
+      .bd-annotation-toolbar__confirm {
+        flex: 1 1 40%;
+        justify-content: center;
+        min-height: 40px;
       }
     }
 

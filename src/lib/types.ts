@@ -14,7 +14,7 @@ export type BugdumpTheme = 'light' | 'dark' | 'auto';
 
 export type BugdumpPosition = 'bottom-right' | 'bottom-left';
 
-export type BugdumpLocale = 'en' | 'ru' | 'es' | 'fr' | 'pt';
+export type BugdumpLocale = 'en' | 'ru' | 'es' | 'fr' | 'pt' | 'de';
 
 export interface BugdumpTranslations {
   title?: string;

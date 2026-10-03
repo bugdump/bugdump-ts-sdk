@@ -55,9 +55,9 @@ describe('resolveConfig', () => {
   });
 
   it('falls back to English strings for a locale that is not shipped, but still declares it', () => {
-    const resolved = resolveConfig({ apiKey: 'k', locale: 'de' });
+    const resolved = resolveConfig({ apiKey: 'k', locale: 'it' });
 
-    expect(resolved.locale).toBe('de');
+    expect(resolved.locale).toBe('it');
     expect(resolved.translations.sendButton).toBe('Send');
   });
 

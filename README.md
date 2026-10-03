@@ -10,7 +10,7 @@ Official TypeScript SDK for [Bugdump](https://bugdump.com) - embed a bug reporti
 - **TypeScript-first** - Full type definitions out of the box
 - **Shadow DOM isolated** - Widget styles never leak into your app
 - **Auto-init** - Single script tag with `data-api-key`, no JS required
-- **Five languages built in** - English, Russian, Spanish, French and Portuguese, picked from the page or browser language, with per-string overrides
+- **Six languages built in** - English, Russian, Spanish, French, Portuguese and German, picked from the page or browser language, with per-string overrides
 - **Your own form** - Send reports from your own UI with `submit()`, telemetry included
 - **Report link** - Optionally show a direct link to the created report after submission with a copy button
 - **Public portal link** - Automatically shows a "View reports" link in the widget footer when the public portal is enabled for your project
@@ -96,7 +96,7 @@ const bugdump = Bugdump.init({
   endpoint: 'https://api.bugdump.com', // Custom API endpoint
   theme: 'auto', // Widget color theme
   position: 'bottom-right', // Corner the widget is anchored to
-  locale: 'auto', // Widget language: 'auto', 'en', 'ru', 'es', 'fr', 'pt' or any tag
+  locale: 'auto', // Widget language: 'auto', 'en', 'ru', 'es', 'fr', 'pt', 'de' or any tag
   icon: 'chat', // Trigger button icon
   hideButton: false, // Hide the floating button
   showReportLink: false, // Show report link after submission
@@ -142,7 +142,7 @@ const bugdump = Bugdump.init({
 
 #### Languages and translations
 
-The widget ships in English (`en`), Russian (`ru`), Spanish (`es`), French (`fr`) and Portuguese (`pt`, Brazilian). The `locale` option picks one:
+The widget ships in English (`en`), Russian (`ru`), Spanish (`es`), French (`fr`), Portuguese (`pt`, Brazilian) and German (`de`, formal *Sie*). The `locale` option picks one:
 
 | `locale`                          | Language                                                                                                  |
 | --------------------------------- | --------------------------------------------------------------------------------------------------------- |
@@ -162,8 +162,8 @@ Bugdump.init({ apiKey: 'your-api-key', locale: 'en' });
 // A language the SDK does not ship: strings you leave out fall back to English
 Bugdump.init({
   apiKey: 'your-api-key',
-  locale: 'de',
-  translations: { title: 'Feedback senden', sendButton: 'Senden' /* … */ },
+  locale: 'it',
+  translations: { title: 'Invia feedback', sendButton: 'Invia' /* … */ },
 });
 ```
 
@@ -352,7 +352,7 @@ Use `data-*` attributes to configure the widget. All attributes are optional exc
 | `data-api-url`                 | `endpoint`                       | `https://api.bugdump.com` | Custom API endpoint                                                                     |
 | `data-theme`                   | `theme`                          | `auto`                    | Widget theme: `light`, `dark`, or `auto`. Change it later with `setTheme`               |
 | `data-position`                | `position`                       | `bottom-right`            | Widget corner: `bottom-right` or `bottom-left`                                          |
-| `data-locale`                  | `locale`                         | `auto`                    | Widget language: `auto`, `en`, `ru`, `es`, `fr`, `pt` or any tag                        |
+| `data-locale`                  | `locale`                         | `auto`                    | Widget language: `auto`, `en`, `ru`, `es`, `fr`, `pt`, `de` or any tag                  |
 | `data-hide-button`             | `hideButton`                     | `false`                   | Hide the floating button                                                                |
 | `data-show-report-link`        | `showReportLink`                 | `false`                   | Show a link to the created report on the success screen                                 |
 | `data-icon`                    | `icon`                           | `chat`                    | Custom trigger button icon (predefined name, URL, SVG, or emoji)                        |

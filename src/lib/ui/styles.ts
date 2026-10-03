@@ -84,6 +84,7 @@ export function createStyles(): string {
       bottom: 0;
       box-sizing: border-box;
       max-height: 100vh;
+      max-height: 100dvh;
       padding: 20px;
       display: flex;
       flex-direction: column;
@@ -1089,12 +1090,69 @@ export function createStyles(): string {
       }
 
       .bd-dock {
-        margin: 0 20px 20px;
+        margin: 0 20px calc(20px + env(safe-area-inset-bottom, 0px));
       }
 
+      /* A bottom sheet: pinned to the screen edge and covering the trigger, which is
+         redundant next to the header's close button. */
       .bd-panel {
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 1;
         width: 100%;
+        max-height: calc(100vh - 24px);
+        max-height: calc(100dvh - 24px);
+        padding-bottom: env(safe-area-inset-bottom, 0px);
+        box-sizing: border-box;
         border-radius: 16px 16px 0 0;
+        transform: translateY(100%);
+      }
+
+      .bd-panel--visible {
+        transform: translateY(0);
+      }
+
+      /* The compact recording bar is shorter than the trigger, which would show above it. */
+      .bd-anchor:has(> .bd-panel--visible) > .bd-dock {
+        visibility: hidden;
+      }
+
+      .bd-panel__body {
+        overscroll-behavior: contain;
+      }
+
+      /* iOS zooms the page into any field under 16px when it gets focus. */
+      .bd-textarea,
+      .bd-input {
+        font-size: 16px;
+      }
+
+      .bd-panel__close,
+      .bd-panel__minimize {
+        padding: 9px;
+      }
+
+      .bd-action-btn {
+        padding: 10px 12px;
+      }
+
+      .bd-reporter-toggle {
+        padding: 6px 0;
+      }
+
+      .bd-attachment__remove {
+        width: 24px;
+        height: 24px;
+      }
+
+      .bd-send-btn {
+        padding: 11px 22px;
+      }
+
+      .bd-success-action-btn {
+        padding: 10px 16px;
       }
     }
   `;

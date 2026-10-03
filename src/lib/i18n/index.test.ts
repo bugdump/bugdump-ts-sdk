@@ -6,10 +6,11 @@ describe('findLocale', () => {
     expect(findLocale('pt-BR')).toBe('pt');
     expect(findLocale('EN_us')).toBe('en');
     expect(findLocale('fr')).toBe('fr');
+    expect(findLocale('de-AT')).toBe('de');
   });
 
   it('returns undefined for languages that are not shipped', () => {
-    expect(findLocale('de')).toBeUndefined();
+    expect(findLocale('it')).toBeUndefined();
     expect(findLocale('')).toBeUndefined();
     expect(findLocale('constructor')).toBeUndefined();
   });
@@ -19,7 +20,7 @@ describe('resolveLocale', () => {
   it('keeps an explicit tag as given, trimmed', () => {
     expect(resolveLocale('fr', ['ru'])).toBe('fr');
     expect(resolveLocale(' fr-CA ', ['ru'])).toBe('fr-CA');
-    expect(resolveLocale('de', ['ru'])).toBe('de');
+    expect(resolveLocale('it', ['ru'])).toBe('it');
   });
 
   it('detects the language for auto in any case, an empty value or no value', () => {
@@ -30,7 +31,8 @@ describe('resolveLocale', () => {
   });
 
   it('picks the first detected language that is shipped, else English', () => {
-    expect(resolveLocale(undefined, ['', 'de-DE', 'es'])).toBe('es');
+    expect(resolveLocale(undefined, ['', 'it-IT', 'es'])).toBe('es');
+    expect(resolveLocale(undefined, ['it-IT', 'de-DE'])).toBe('de');
     expect(resolveLocale(undefined, [])).toBe('en');
     expect(resolveLocale(undefined, ['constructor'])).toBe('en');
   });

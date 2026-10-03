@@ -1,11 +1,12 @@
 import type { BugdumpLocale, BugdumpTranslations } from '../types';
+import { de } from './de';
 import { en } from './en';
 import { es } from './es';
 import { fr } from './fr';
 import { pt } from './pt';
 import { ru } from './ru';
 
-export const LOCALES: Record<BugdumpLocale, Required<BugdumpTranslations>> = { en, ru, es, fr, pt };
+export const LOCALES: Record<BugdumpLocale, Required<BugdumpTranslations>> = { en, ru, es, fr, pt, de };
 export const BUGDUMP_LOCALES = Object.keys(LOCALES) as BugdumpLocale[];
 
 export function findLocale(tag: string): BugdumpLocale | undefined {
