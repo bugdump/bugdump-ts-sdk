@@ -21,6 +21,7 @@ export const es: Required<BugdumpTranslations> = {
   successSubtitle: 'Gracias por tus comentarios.',
   errorMessage: 'Algo salió mal. Inténtalo de nuevo.',
   emptyDescriptionMessage: 'Describe lo que pasó antes de enviar.',
+  quotaExceededMessage: 'Este sitio no acepta comentarios en este momento. Inténtalo más tarde.',
   arrowTool: 'Flecha',
   rectangleTool: 'Rectángulo',
   drawTool: 'Dibujar',

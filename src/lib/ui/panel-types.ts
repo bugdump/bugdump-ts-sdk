@@ -51,6 +51,7 @@ export interface PanelElements {
   taskFields: HTMLDivElement;
   taskInput: HTMLInputElement;
   body: HTMLDivElement;
+  quotaNotice: HTMLDivElement;
   successView: HTMLDivElement;
   successActions: HTMLDivElement;
   successCloseBtn: HTMLButtonElement;

@@ -145,6 +145,10 @@ export class Widget {
     this.panel.setRemoveBranding(remove);
   }
 
+  setAcceptingReports(accepting: boolean): void {
+    this.panel.setAcceptingReports(accepting);
+  }
+
   setPortalUrl(url: string | null | undefined): void {
     this.panel.setPortalUrl(url);
   }

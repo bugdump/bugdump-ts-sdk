@@ -21,6 +21,7 @@ export const de: Required<BugdumpTranslations> = {
   successSubtitle: 'Vielen Dank für Ihr Feedback.',
   errorMessage: 'Etwas ist schiefgelaufen. Bitte versuchen Sie es erneut.',
   emptyDescriptionMessage: 'Bitte beschreiben Sie vor dem Senden, was passiert ist.',
+  quotaExceededMessage: 'Diese Website nimmt gerade kein Feedback an. Bitte versuchen Sie es später erneut.',
   arrowTool: 'Pfeil',
   rectangleTool: 'Rechteck',
   drawTool: 'Zeichnen',

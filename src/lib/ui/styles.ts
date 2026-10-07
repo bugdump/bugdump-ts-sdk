@@ -790,7 +790,7 @@ export function createStyles(): string {
       display: none;
     }
 
-    .bd-error {
+    .bd-error, .bd-quota-notice {
       padding: 8px 12px;
       background: var(--bd-error-bg);
       color: var(--bd-error-text);

@@ -169,60 +169,61 @@ Bugdump.init({
 
 `Bugdump.getInstance()?.getConfig()?.locale` returns the language the widget uses: the tag you passed, or the one `auto` picked. The widget sets it as its `lang` attribute. The language is read once at `init`; to switch it in a single-page app, call `destroy()` and `init()` again. `bubbleText` is your own text and is not translated.
 
-| Key                       | Default                                         | Description                                                                                   |
-| ------------------------- | ----------------------------------------------- | --------------------------------------------------------------------------------------------- |
-| `title`                   | `Send feedback`                                 | Panel header title and trigger button aria-label                                              |
-| `triggerTitle`            | falls back to `title`                           | Floating button hover tooltip (`title` attribute) and aria-label                              |
-| `descriptionPlaceholder`  | `What's on your mind?`                          | Textarea placeholder                                                                          |
-| `attachButton`            | `Attach`                                        | File attach button label                                                                      |
-| `screenshotButton`        | `Screenshot`                                    | Screenshot button label                                                                       |
-| `recordButton`            | `Record`                                        | Screen recording button label                                                                 |
-| `sendButton`              | `Send`                                          | Submit button label                                                                           |
-| `reporterToggle`          | `Reporter info`                                 | Reporter section toggle label                                                                 |
-| `namePlaceholder`         | `Your name`                                     | Name input placeholder                                                                        |
-| `emailPlaceholder`        | `Your email`                                    | Email input placeholder                                                                       |
-| `taskAttachToggle`        | `Attach to task`                                | Label for the toggle that reveals the task ID field (shown when `allowTaskAttach` is enabled) |
-| `taskIdPlaceholder`       | `Task ID`                                       | Placeholder for the task ID input (shown when `allowTaskAttach` is enabled)                   |
-| `capturing`               | `Capturing...`                                  | Screenshot loading state                                                                      |
-| `startRecording`          | `Record`                                        | Start recording button label in the recording bar                                             |
-| `stop`                    | `Stop`                                          | Recording stop button label                                                                   |
-| `sending`                 | `Sending...`                                    | Submit loading state                                                                          |
-| `successTitle`            | `Feedback sent!`                                | Success message title                                                                         |
-| `successSubtitle`         | `Thank you for your feedback.`                  | Success message subtitle                                                                      |
-| `errorMessage`            | `Something went wrong. Please try again.`       | Error message                                                                                 |
-| `emptyDescriptionMessage` | `Please describe what happened before sending.` | Validation message shown when submitting with an empty description                            |
-| `closeButton`             | `Close`                                         | Close button on the success screen                                                            |
-| `submitAnother`           | `Submit another`                                | Button on the success screen to file another report                                           |
-| `arrowTool`               | `Arrow`                                         | Annotation arrow tool tooltip                                                                 |
-| `rectangleTool`           | `Rectangle`                                     | Annotation rectangle tool tooltip                                                             |
-| `drawTool`                | `Draw`                                          | Annotation freehand tool tooltip                                                              |
-| `textTool`                | `Text`                                          | Annotation text tool tooltip                                                                  |
-| `blurTool`                | `Blur`                                          | Annotation blur tool tooltip                                                                  |
-| `undo`                    | `Undo`                                          | Annotation undo button tooltip                                                                |
-| `cancel`                  | `Cancel`                                        | Annotation cancel button label                                                                |
-| `done`                    | `Done`                                          | Annotation confirm button label                                                               |
-| `badgeScreenshot`         | `Screenshot`                                    | Badge label shown on screenshot attachments                                                   |
-| `badgeRecording`          | `Recording`                                     | Badge label shown on screen recording attachments                                             |
-| `badgeReplay`             | `Replay`                                        | Badge label shown on session replay attachments                                               |
-| `badgeVoiceNote`          | `Voice note`                                    | Badge label shown on voice note attachments                                                   |
-| `copyLink`                | `Copy link`                                     | Copy report link button label (shown when `showReportLink` is enabled)                        |
-| `copied`                  | `Copied!`                                       | Feedback text after copying the report link                                                   |
-| `minimizePanel`           | `Minimize`                                      | Panel minimize button aria-label                                                              |
-| `closePanel`              | `Close`                                         | Panel close button aria-label                                                                 |
-| `toggleMicrophone`        | `Toggle microphone`                             | Recording bar microphone button aria-label                                                    |
-| `selectMicrophone`        | `Select microphone`                             | Recording bar microphone picker aria-label                                                    |
-| `microphone`              | `Microphone`                                    | Name of an unlabeled microphone; the widget appends its number                                |
-| `colorRed`                | `Red`                                           | Annotation color tooltip                                                                      |
-| `colorYellow`             | `Yellow`                                        | Annotation color tooltip                                                                      |
-| `colorGreen`              | `Green`                                         | Annotation color tooltip                                                                      |
-| `colorBlue`               | `Blue`                                          | Annotation color tooltip                                                                      |
-| `colorWhite`              | `White`                                         | Annotation color tooltip                                                                      |
-| `removeAttachment`        | `Remove`                                        | Attachment remove button aria-label                                                           |
-| `uploading`               | `Uploading`                                     | Send button while uploading; the widget appends the file count and percentage                 |
-| `viewReports`             | `View reports`                                  | Footer link to the public portal                                                              |
-| `poweredBy`               | `Powered by`                                    | Footer branding; the widget appends "Bugdump"                                                 |
-| `dismissBubble`           | `Dismiss`                                       | Teaser bubble close button aria-label                                                         |
-| `textPlaceholder`         | `Type text…`                                    | Annotation text input placeholder                                                             |
+| Key                       | Default                                                                  | Description                                                                                   |
+| ------------------------- | ------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------- |
+| `title`                   | `Send feedback`                                                          | Panel header title and trigger button aria-label                                              |
+| `triggerTitle`            | falls back to `title`                                                    | Floating button hover tooltip (`title` attribute) and aria-label                              |
+| `descriptionPlaceholder`  | `What's on your mind?`                                                   | Textarea placeholder                                                                          |
+| `attachButton`            | `Attach`                                                                 | File attach button label                                                                      |
+| `screenshotButton`        | `Screenshot`                                                             | Screenshot button label                                                                       |
+| `recordButton`            | `Record`                                                                 | Screen recording button label                                                                 |
+| `sendButton`              | `Send`                                                                   | Submit button label                                                                           |
+| `reporterToggle`          | `Reporter info`                                                          | Reporter section toggle label                                                                 |
+| `namePlaceholder`         | `Your name`                                                              | Name input placeholder                                                                        |
+| `emailPlaceholder`        | `Your email`                                                             | Email input placeholder                                                                       |
+| `taskAttachToggle`        | `Attach to task`                                                         | Label for the toggle that reveals the task ID field (shown when `allowTaskAttach` is enabled) |
+| `taskIdPlaceholder`       | `Task ID`                                                                | Placeholder for the task ID input (shown when `allowTaskAttach` is enabled)                   |
+| `capturing`               | `Capturing...`                                                           | Screenshot loading state                                                                      |
+| `startRecording`          | `Record`                                                                 | Start recording button label in the recording bar                                             |
+| `stop`                    | `Stop`                                                                   | Recording stop button label                                                                   |
+| `sending`                 | `Sending...`                                                             | Submit loading state                                                                          |
+| `successTitle`            | `Feedback sent!`                                                         | Success message title                                                                         |
+| `successSubtitle`         | `Thank you for your feedback.`                                           | Success message subtitle                                                                      |
+| `errorMessage`            | `Something went wrong. Please try again.`                                | Error message                                                                                 |
+| `emptyDescriptionMessage` | `Please describe what happened before sending.`                          | Validation message shown when submitting with an empty description                            |
+| `quotaExceededMessage`    | `This site is not accepting feedback right now. Please try again later.` | Notice shown, with Send disabled, while the project is not accepting reports                  |
+| `closeButton`             | `Close`                                                                  | Close button on the success screen                                                            |
+| `submitAnother`           | `Submit another`                                                         | Button on the success screen to file another report                                           |
+| `arrowTool`               | `Arrow`                                                                  | Annotation arrow tool tooltip                                                                 |
+| `rectangleTool`           | `Rectangle`                                                              | Annotation rectangle tool tooltip                                                             |
+| `drawTool`                | `Draw`                                                                   | Annotation freehand tool tooltip                                                              |
+| `textTool`                | `Text`                                                                   | Annotation text tool tooltip                                                                  |
+| `blurTool`                | `Blur`                                                                   | Annotation blur tool tooltip                                                                  |
+| `undo`                    | `Undo`                                                                   | Annotation undo button tooltip                                                                |
+| `cancel`                  | `Cancel`                                                                 | Annotation cancel button label                                                                |
+| `done`                    | `Done`                                                                   | Annotation confirm button label                                                               |
+| `badgeScreenshot`         | `Screenshot`                                                             | Badge label shown on screenshot attachments                                                   |
+| `badgeRecording`          | `Recording`                                                              | Badge label shown on screen recording attachments                                             |
+| `badgeReplay`             | `Replay`                                                                 | Badge label shown on session replay attachments                                               |
+| `badgeVoiceNote`          | `Voice note`                                                             | Badge label shown on voice note attachments                                                   |
+| `copyLink`                | `Copy link`                                                              | Copy report link button label (shown when `showReportLink` is enabled)                        |
+| `copied`                  | `Copied!`                                                                | Feedback text after copying the report link                                                   |
+| `minimizePanel`           | `Minimize`                                                               | Panel minimize button aria-label                                                              |
+| `closePanel`              | `Close`                                                                  | Panel close button aria-label                                                                 |
+| `toggleMicrophone`        | `Toggle microphone`                                                      | Recording bar microphone button aria-label                                                    |
+| `selectMicrophone`        | `Select microphone`                                                      | Recording bar microphone picker aria-label                                                    |
+| `microphone`              | `Microphone`                                                             | Name of an unlabeled microphone; the widget appends its number                                |
+| `colorRed`                | `Red`                                                                    | Annotation color tooltip                                                                      |
+| `colorYellow`             | `Yellow`                                                                 | Annotation color tooltip                                                                      |
+| `colorGreen`              | `Green`                                                                  | Annotation color tooltip                                                                      |
+| `colorBlue`               | `Blue`                                                                   | Annotation color tooltip                                                                      |
+| `colorWhite`              | `White`                                                                  | Annotation color tooltip                                                                      |
+| `removeAttachment`        | `Remove`                                                                 | Attachment remove button aria-label                                                           |
+| `uploading`               | `Uploading`                                                              | Send button while uploading; the widget appends the file count and percentage                 |
+| `viewReports`             | `View reports`                                                           | Footer link to the public portal                                                              |
+| `poweredBy`               | `Powered by`                                                             | Footer branding; the widget appends "Bugdump"                                                 |
+| `dismissBubble`           | `Dismiss`                                                                | Teaser bubble close button aria-label                                                         |
+| `textPlaceholder`         | `Type text…`                                                             | Annotation text input placeholder                                                             |
 
 ## Filtering Noise
 
@@ -377,7 +378,7 @@ The widget supports three theme modes:
 - **`light`** — Always use the light theme
 - **`dark`** — Always use the dark theme
 
-> **Note:** Your account plan may also restrict certain features server-side (e.g., screen recording is only available on Pro and Ultra plans). The widget respects both local config and server-side limits.
+> **Note:** Your account plan may also restrict certain features server-side. The widget respects both local config and server-side limits.
 
 #### Changing the theme at runtime
 
@@ -810,6 +811,15 @@ try {
   }
 }
 ```
+
+`error.code` holds the code the API answered with. Two codes mean the project is not accepting reports right now. Both come with status `403`; don't retry them, because sending again fails the same way until the limit clears.
+
+| Code                    | Status | Meaning                                                                                             |
+| ----------------------- | ------ | --------------------------------------------------------------------------------------------------- |
+| `REPORT_QUOTA_EXCEEDED` | `403`  | The project has used its monthly report quota. Reports are accepted again from the 1st (00:00 UTC). |
+| `TASK_LIMIT_REACHED`    | `403`  | The project is on the Free plan and has reached its task limit.                                     |
+
+The built-in widget handles both itself: it shows the `quotaExceededMessage` notice and disables its Send button.
 
 ## TypeScript
 

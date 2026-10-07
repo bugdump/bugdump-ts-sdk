@@ -21,6 +21,7 @@ export const fr: Required<BugdumpTranslations> = {
   successSubtitle: 'Merci pour votre retour.',
   errorMessage: "Une erreur s'est produite. Veuillez réessayer.",
   emptyDescriptionMessage: "Décrivez ce qui s'est passé avant d'envoyer.",
+  quotaExceededMessage: "Ce site n'accepte pas de retours pour le moment. Veuillez réessayer plus tard.",
   arrowTool: 'Flèche',
   rectangleTool: 'Rectangle',
   drawTool: 'Dessin',

@@ -37,6 +37,7 @@ export interface BugdumpTranslations {
   successSubtitle?: string;
   errorMessage?: string;
   emptyDescriptionMessage?: string;
+  quotaExceededMessage?: string;
   arrowTool?: string;
   rectangleTool?: string;
   drawTool?: string;
@@ -214,6 +215,7 @@ export interface WidgetConfig {
     screenRecording: boolean;
     removeBranding: boolean;
   };
+  acceptingReports: boolean;
   portalUrl?: string | null;
   dashboardUrl?: string | null;
 }

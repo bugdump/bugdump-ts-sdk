@@ -12,6 +12,7 @@ interface Call {
 
 let calls: Call[];
 let reportStatus: number;
+let reportError: string;
 
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
@@ -38,7 +39,7 @@ const fetchMock = vi.fn(async (input: string, init?: RequestInit) => {
   if (input === `${ENDPOINT}/api/widget/v1/reports`) {
     return reportStatus === 201
       ? jsonResponse({ id: 'report-1', taskId: 'task-1', taskPublicId: 7 }, 201)
-      : jsonResponse({ error: 'VALIDATION_FAILED' }, reportStatus);
+      : jsonResponse({ error: reportError }, reportStatus);
   }
   throw new Error(`Unexpected fetch ${input}`);
 });
@@ -64,6 +65,7 @@ function reportBody(): Record<string, unknown> {
 beforeEach(() => {
   calls = [];
   reportStatus = 201;
+  reportError = 'VALIDATION_FAILED';
   vi.stubGlobal('fetch', fetchMock);
 });
 
@@ -132,6 +134,18 @@ describe('Bugdump.submit', () => {
     reportStatus = 400;
 
     await expect(bugdump.submit({ description: 'x' })).rejects.toBeInstanceOf(BugdumpApiError);
+  });
+
+  it('rejects with the quota code when the project is not accepting reports', async () => {
+    const bugdump = Bugdump.init({ apiKey: 'bd_test', endpoint: ENDPOINT });
+    stubBrowser();
+    reportStatus = 403;
+    reportError = 'REPORT_QUOTA_EXCEEDED';
+
+    const submission = bugdump.submit({ description: 'x' });
+
+    await expect(submission).rejects.toBeInstanceOf(BugdumpApiError);
+    await expect(submission).rejects.toMatchObject({ code: 'REPORT_QUOTA_EXCEEDED', statusCode: 403 });
   });
 
   it('refuses to run outside a browser', async () => {

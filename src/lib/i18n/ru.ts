@@ -21,6 +21,7 @@ export const ru: Required<BugdumpTranslations> = {
   successSubtitle: 'Спасибо за ваш отзыв.',
   errorMessage: 'Что-то пошло не так. Попробуйте ещё раз.',
   emptyDescriptionMessage: 'Опишите, что произошло, прежде чем отправить.',
+  quotaExceededMessage: 'Сейчас этот сайт не принимает отзывы. Попробуйте позже.',
   arrowTool: 'Стрелка',
   rectangleTool: 'Прямоугольник',
   drawTool: 'Карандаш',

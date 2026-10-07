@@ -102,6 +102,7 @@ export class Bugdump {
           screenRecording: resolved.features.screenRecording && widgetConfig.features.screenRecording,
         });
         instance.widget?.setRemoveBranding(widgetConfig.features.removeBranding);
+        if (widgetConfig.acceptingReports === false) instance.widget?.setAcceptingReports(false);
         instance.widget?.setPortalUrl(widgetConfig.portalUrl);
         instance.widget?.setDashboardUrl(widgetConfig.dashboardUrl);
         // Replay starts here rather than alongside the other collectors: rrweb is a separate

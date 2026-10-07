@@ -26,6 +26,7 @@ import type { ScreenshotResult } from '../capture/screenshot';
 import { AnnotationOverlay, renderOperationsToCanvas } from '../capture/annotation';
 import type { TextOperation } from '../capture/annotation';
 import { en } from '../i18n/en';
+import { BugdumpApiError } from '../http-client';
 import type { BugdumpTheme, BugdumpTranslations, CaptureMethod, ReportResponse, UserAction } from '../types';
 import type { SessionReplayCollector } from '../collectors/session-replay';
 import { trimReplayToBudget, SESSION_REPLAY_WINDOW_MS } from '../collectors/session-replay';
@@ -62,6 +63,7 @@ export class Panel {
   private attachments: Attachment[] = [];
   private visible = false;
   private submitting = false;
+  private acceptingReports = true;
   private showingSuccess = false;
   private recording = false;
   private recordingArmed = false;
@@ -156,6 +158,12 @@ export class Panel {
     if (branding) {
       branding.style.display = remove ? 'none' : '';
     }
+  }
+
+  setAcceptingReports(accepting: boolean): void {
+    this.acceptingReports = accepting;
+    this.elements.quotaNotice.style.display = accepting ? 'none' : '';
+    this.elements.sendBtn.disabled = this.submitting || !this.acceptingReports;
   }
 
   setPortalUrl(url: string | null | undefined): void {
@@ -379,6 +387,7 @@ export class Panel {
         </div>
       </div>
       <div class="bd-panel__body" data-role="body">
+        <div class="bd-quota-notice" data-role="quota-notice" style="display:none">${this.t.quotaExceededMessage}</div>
         <textarea class="bd-textarea" placeholder="${this.t.descriptionPlaceholder}" rows="2" maxlength="${MAX_DESCRIPTION_LENGTH}"></textarea>
         <span class="bd-char-counter" data-role="char-counter" style="display:none">0 / ${MAX_DESCRIPTION_LENGTH}</span>
         <div class="bd-action-bar">
@@ -451,6 +460,7 @@ export class Panel {
       taskFields: q<HTMLDivElement>('[data-role="task-fields"]'),
       taskInput: q<HTMLInputElement>('[data-role="task-id"]'),
       body: q<HTMLDivElement>('[data-role="body"]'),
+      quotaNotice: q<HTMLDivElement>('[data-role="quota-notice"]'),
       successView: q<HTMLDivElement>('[data-role="success"]'),
       successActions: q<HTMLDivElement>('[data-role="success-actions"]'),
       successCloseBtn: q<HTMLButtonElement>('[data-action="success-close"]'),
@@ -533,6 +543,8 @@ export class Panel {
   }
 
   private async handleSubmit(): Promise<void> {
+    if (!this.acceptingReports) return;
+
     const description = this.elements.textarea.value.trim();
     // A description is required unless the user attached at least one real file
     // (screenshots, recordings, voice notes, uploads) — the automatic session replay
@@ -569,9 +581,17 @@ export class Panel {
         actions: [...this.derivedActions],
       });
       this.showSuccessView(String(result.taskPublicId));
-    } catch {
-      this.setSubmitting(false);
-      this.showError(this.t.errorMessage);
+    } catch (err) {
+      if (
+        err instanceof BugdumpApiError &&
+        (err.code === 'REPORT_QUOTA_EXCEEDED' || err.code === 'TASK_LIMIT_REACHED')
+      ) {
+        this.setAcceptingReports(false);
+        this.setSubmitting(false);
+      } else {
+        this.setSubmitting(false);
+        this.showError(this.t.errorMessage);
+      }
     }
   }
 
@@ -1501,7 +1521,7 @@ export class Panel {
 
   private setSubmitting(submitting: boolean): void {
     this.submitting = submitting;
-    this.elements.sendBtn.disabled = submitting;
+    this.elements.sendBtn.disabled = submitting || !this.acceptingReports;
     if (submitting) {
       this.setSendBtnLabel(this.t.sending);
     } else {
