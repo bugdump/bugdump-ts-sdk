@@ -1,6 +1,6 @@
 {
   "name": "@bugdump/sdk",
-  "version": "0.0.43",
+  "version": "0.0.44",
   "description": "Official Bugdump SDK - Embed bug reporting widget on your website",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
