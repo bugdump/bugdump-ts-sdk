@@ -16,6 +16,7 @@ export interface Attachment {
 }
 
 export interface PanelSubmitData {
+  clientReportId: string;
   description: string;
   reporterName: string;
   reporterEmail: string;

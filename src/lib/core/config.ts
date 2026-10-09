@@ -1,8 +1,10 @@
 import type { BugdumpConfig, BugdumpFeatures, BugdumpPosition, CaptureMethod } from '../types';
 import { LOCALES, detectLanguages, findLocale, resolveLocale } from '../i18n';
 
-export type ResolvedBugdumpConfig = Required<Omit<BugdumpConfig, 'consoleFilter' | 'networkFilter' | 'locale'>> &
-  Pick<BugdumpConfig, 'consoleFilter' | 'networkFilter'> & { locale: string };
+type OptionalConfigKeys = 'consoleFilter' | 'networkFilter' | 'release' | 'ignoreErrors' | 'beforeSend';
+
+export type ResolvedBugdumpConfig = Required<Omit<BugdumpConfig, OptionalConfigKeys | 'locale'>> &
+  Pick<BugdumpConfig, OptionalConfigKeys> & { locale: string };
 
 const DEFAULT_ENDPOINT = 'https://api.bugdump.com';
 
@@ -42,5 +44,19 @@ export function resolveConfig(config: BugdumpConfig): ResolvedBugdumpConfig {
     },
     consoleFilter: config.consoleFilter,
     networkFilter: config.networkFilter,
+    captureErrors: config.captureErrors ?? true,
+    release: config.release || undefined,
+    sampleRate: resolveSampleRate(config.sampleRate),
+    ignoreErrors: config.ignoreErrors,
+    beforeSend: config.beforeSend,
   };
+}
+
+function resolveSampleRate(sampleRate: number | undefined): number {
+  if (sampleRate === undefined) return 1;
+  if (Number.isFinite(sampleRate) && sampleRate >= 0 && sampleRate <= 1) {
+    return sampleRate;
+  }
+  console.warn(`[Bugdump] sampleRate must be a number from 0 to 1, got ${String(sampleRate)}; sending every error.`);
+  return 1;
 }

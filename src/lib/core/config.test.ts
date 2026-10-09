@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { resolveConfig } from './config';
 
 describe('resolveConfig', () => {
@@ -70,5 +70,41 @@ describe('resolveConfig', () => {
 
   it('declares English when nothing is detected', () => {
     expect(resolveConfig({ apiKey: 'k' }).locale).toBe('en');
+  });
+
+  it('captures errors at every rate by default', () => {
+    const resolved = resolveConfig({ apiKey: 'k' });
+
+    expect(resolved.captureErrors).toBe(true);
+    expect(resolved.sampleRate).toBe(1);
+    expect(resolved.release).toBeUndefined();
+  });
+
+  it.each([0, 0.25, 1])('keeps a sampleRate of %s', (sampleRate) => {
+    expect(resolveConfig({ apiKey: 'k', sampleRate }).sampleRate).toBe(sampleRate);
+  });
+
+  it.each([1.5, -0.1, Number.NaN])('resolves a sampleRate of %s to 1 with a warning', (sampleRate) => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    expect(resolveConfig({ apiKey: 'k', sampleRate }).sampleRate).toBe(1);
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('[Bugdump] sampleRate'));
+    warn.mockRestore();
+  });
+
+  it('keeps captureErrors off and passes release, ignoreErrors and beforeSend through', () => {
+    const beforeSend = () => null;
+    const resolved = resolveConfig({
+      apiKey: 'k',
+      captureErrors: false,
+      release: 'abc123',
+      ignoreErrors: ['Timeout', /chunk/],
+      beforeSend,
+    });
+
+    expect(resolved.captureErrors).toBe(false);
+    expect(resolved.release).toBe('abc123');
+    expect(resolved.ignoreErrors).toEqual(['Timeout', /chunk/]);
+    expect(resolved.beforeSend).toBe(beforeSend);
   });
 });

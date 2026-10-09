@@ -1,5 +1,3 @@
-import type { ReportPayload } from '../types';
-
 // 10 MB cap. Server bodyLimit is 25 MB, so the large margin absorbs the difference
 // between this character count (UTF-16 units via .length) and the UTF-8 byte length
 // the server actually measures.
@@ -7,6 +5,26 @@ const MAX_PAYLOAD_BYTES = 10 * 1024 * 1024;
 const TRIMMED_ARG_LENGTH = 512;
 const MIN_CONSOLE_LOGS = 30;
 const MIN_NETWORK_REQUESTS = 20;
+
+/** The fields the trimmer cuts; the rest of the payload is only measured. */
+export interface TrimmablePayload {
+  consoleLogs?: Record<string, unknown>[];
+  networkRequests?: Record<string, unknown>[];
+}
+
+/**
+ * How the budget is measured: `utf16` is `JSON.stringify(payload).length`, `utf8` the encoded
+ * byte length, which is what a server body limit counts.
+ */
+export type PayloadSizeUnit = 'utf16' | 'utf8';
+
+type Measure = (json: string) => number;
+
+const utf8Encoder = new TextEncoder();
+const MEASURES: Record<PayloadSizeUnit, Measure> = {
+  utf16: (json) => json.length,
+  utf8: (json) => utf8Encoder.encode(json).length,
+};
 
 export interface TrimInfo {
   trimmed: boolean;
@@ -16,18 +34,14 @@ export interface TrimInfo {
   networkRequestsDropped: number;
 }
 
-function measurePayload(payload: ReportPayload): number {
-  return JSON.stringify(payload).length;
-}
-
 /**
- * Tracks `JSON.stringify(payload).length` while the two heavy arrays (consoleLogs,
+ * Tracks the measured size of `JSON.stringify(payload)` while the two heavy arrays (consoleLogs,
  * networkRequests) are trimmed, without re-serializing the whole payload on every
  * step. The size is split into a constant base (the payload with both arrays empty)
  * plus the exact serialized length of each array, recomputed incrementally as
  * elements are mutated, dropped, or truncated. The arithmetic mirrors how JSON
- * serializes an array — `[` + elements joined by `,` + `]` — so the running total is
- * identical to a full `JSON.stringify(payload).length` at every step.
+ * serializes an array — `[` + elements joined by `,` + `]`, each 1 in either unit — so the
+ * running total equals a full measure of `JSON.stringify(payload)` at every step.
  *
  * Every operation here is O(1): the element lengths are kept as running sums, and a
  * dropped prefix is tracked with a start index rather than shifted out. Both matter —
@@ -43,12 +57,15 @@ class PayloadSizer {
   private consoleStart = 0;
   private networkStart = 0;
 
-  constructor(private payload: ReportPayload) {
+  constructor(
+    private payload: TrimmablePayload,
+    private measure: Measure,
+  ) {
     const logs = payload.consoleLogs ?? [];
     const requests = payload.networkRequests ?? [];
 
-    this.consoleLen = logs.map((entry) => JSON.stringify(entry).length);
-    this.networkLen = requests.map((entry) => JSON.stringify(entry).length);
+    this.consoleLen = logs.map((entry) => measure(JSON.stringify(entry)));
+    this.networkLen = requests.map((entry) => measure(JSON.stringify(entry)));
     for (const len of this.consoleLen) this.consoleSum += len;
     for (const len of this.networkLen) this.networkSum += len;
 
@@ -57,7 +74,7 @@ class PayloadSizer {
     const savedRequests = payload.networkRequests;
     if (savedLogs) payload.consoleLogs = [];
     if (savedRequests) payload.networkRequests = [];
-    this.base = JSON.stringify(payload).length;
+    this.base = measure(JSON.stringify(payload));
     if (savedLogs) payload.consoleLogs = savedLogs;
     if (savedRequests) payload.networkRequests = savedRequests;
   }
@@ -81,14 +98,14 @@ class PayloadSizer {
 
   setConsoleEntry(index: number): void {
     const at = this.consoleStart + index;
-    const next = JSON.stringify(this.payload.consoleLogs![index]).length;
+    const next = this.measure(JSON.stringify(this.payload.consoleLogs![index]));
     this.consoleSum += next - this.consoleLen[at]!;
     this.consoleLen[at] = next;
   }
 
   setNetworkEntry(index: number): void {
     const at = this.networkStart + index;
-    const next = JSON.stringify(this.payload.networkRequests![index]).length;
+    const next = this.measure(JSON.stringify(this.payload.networkRequests![index]));
     this.networkSum += next - this.networkLen[at]!;
     this.networkLen[at] = next;
   }
@@ -104,7 +121,7 @@ class PayloadSizer {
   }
 }
 
-function trimConsoleLogArgs(payload: ReportPayload, sizer: PayloadSizer): boolean {
+function trimConsoleLogArgs(payload: TrimmablePayload, sizer: PayloadSizer, maxBytes: number): boolean {
   const logs = payload.consoleLogs;
   if (!logs?.length) return false;
 
@@ -134,12 +151,12 @@ function trimConsoleLogArgs(payload: ReportPayload, sizer: PayloadSizer): boolea
     });
 
     sizer.setConsoleEntry(i);
-    if (sizer.total() <= MAX_PAYLOAD_BYTES) break;
+    if (sizer.total() <= maxBytes) break;
   }
   return truncated;
 }
 
-function trimNetworkBodies(payload: ReportPayload, sizer: PayloadSizer): boolean {
+function trimNetworkBodies(payload: TrimmablePayload, sizer: PayloadSizer, maxBytes: number): boolean {
   const requests = payload.networkRequests;
   if (!requests?.length) return false;
 
@@ -152,19 +169,19 @@ function trimNetworkBodies(payload: ReportPayload, sizer: PayloadSizer): boolean
     requests[i]!['responseBody'] = null;
 
     sizer.setNetworkEntry(i);
-    if (sizer.total() <= MAX_PAYLOAD_BYTES) break;
+    if (sizer.total() <= maxBytes) break;
   }
   return dropped;
 }
 
-function dropOldestConsoleLogs(payload: ReportPayload, sizer: PayloadSizer): number {
+function dropOldestConsoleLogs(payload: TrimmablePayload, sizer: PayloadSizer, maxBytes: number): number {
   const logs = payload.consoleLogs;
   if (!logs || logs.length <= MIN_CONSOLE_LOGS) return 0;
 
   // Counted first and spliced once: dropping one at a time would shift the whole array
   // on every step, which is the same quadratic cost the sizer exists to avoid.
   let dropped = 0;
-  while (logs.length - dropped > MIN_CONSOLE_LOGS && sizer.total() > MAX_PAYLOAD_BYTES) {
+  while (logs.length - dropped > MIN_CONSOLE_LOGS && sizer.total() > maxBytes) {
     sizer.shiftConsole();
     dropped++;
   }
@@ -172,12 +189,12 @@ function dropOldestConsoleLogs(payload: ReportPayload, sizer: PayloadSizer): num
   return dropped;
 }
 
-function dropOldestNetworkRequests(payload: ReportPayload, sizer: PayloadSizer): number {
+function dropOldestNetworkRequests(payload: TrimmablePayload, sizer: PayloadSizer, maxBytes: number): number {
   const requests = payload.networkRequests;
   if (!requests || requests.length <= MIN_NETWORK_REQUESTS) return 0;
 
   let dropped = 0;
-  while (requests.length - dropped > MIN_NETWORK_REQUESTS && sizer.total() > MAX_PAYLOAD_BYTES) {
+  while (requests.length - dropped > MIN_NETWORK_REQUESTS && sizer.total() > maxBytes) {
     sizer.shiftNetwork();
     dropped++;
   }
@@ -195,22 +212,27 @@ function emptyTrimInfo(): TrimInfo {
   };
 }
 
-export function trimPayload(payload: ReportPayload): { payload: ReportPayload; info: TrimInfo } {
-  if (measurePayload(payload) <= MAX_PAYLOAD_BYTES) return { payload, info: emptyTrimInfo() };
+export function trimPayload<T extends TrimmablePayload>(
+  payload: T,
+  maxBytes = MAX_PAYLOAD_BYTES,
+  unit: PayloadSizeUnit = 'utf16',
+): { payload: T; info: TrimInfo } {
+  const measure = MEASURES[unit];
+  if (measure(JSON.stringify(payload)) <= maxBytes) return { payload, info: emptyTrimInfo() };
 
   const info: TrimInfo = { ...emptyTrimInfo(), trimmed: true };
-  const sizer = new PayloadSizer(payload);
+  const sizer = new PayloadSizer(payload, measure);
 
-  info.argsTruncated = trimConsoleLogArgs(payload, sizer);
-  if (sizer.total() <= MAX_PAYLOAD_BYTES) return { payload, info };
+  info.argsTruncated = trimConsoleLogArgs(payload, sizer, maxBytes);
+  if (sizer.total() <= maxBytes) return { payload, info };
 
-  info.bodiesDropped = trimNetworkBodies(payload, sizer);
-  if (sizer.total() <= MAX_PAYLOAD_BYTES) return { payload, info };
+  info.bodiesDropped = trimNetworkBodies(payload, sizer, maxBytes);
+  if (sizer.total() <= maxBytes) return { payload, info };
 
-  info.consoleLogsDropped = dropOldestConsoleLogs(payload, sizer);
-  if (sizer.total() <= MAX_PAYLOAD_BYTES) return { payload, info };
+  info.consoleLogsDropped = dropOldestConsoleLogs(payload, sizer, maxBytes);
+  if (sizer.total() <= maxBytes) return { payload, info };
 
-  info.networkRequestsDropped = dropOldestNetworkRequests(payload, sizer);
+  info.networkRequestsDropped = dropOldestNetworkRequests(payload, sizer, maxBytes);
 
   return { payload, info };
 }

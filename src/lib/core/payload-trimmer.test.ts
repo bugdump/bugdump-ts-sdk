@@ -145,4 +145,59 @@ describe('trimPayload', () => {
     expect(info.trimmed).toBe(true);
     expect(out.description.length).toBe(11 * 1024 * 1024);
   });
+
+  describe('with a maxBytes budget', () => {
+    const ERROR_EVENT_MAX_BYTES = 200 * 1024;
+
+    function errorEvent() {
+      return {
+        eventId: '00000000-0000-4000-8000-000000000000',
+        error: { type: 'TypeError', message: 'x is not a function', stack: 's'.repeat(10_000) },
+        consoleLogs: [makeConsoleLog(0, 'small')],
+        networkRequests: Array.from({ length: 50 }, (_, i) => makeNetworkRequest(i, 20 * 1024)),
+      };
+    }
+
+    it('trims an error event with 50 large network bodies to under 200 KB', () => {
+      const payload = errorEvent();
+      expect(JSON.stringify(payload).length).toBeGreaterThan(ERROR_EVENT_MAX_BYTES);
+
+      const { payload: out, info } = trimPayload(payload, ERROR_EVENT_MAX_BYTES);
+
+      expect(info.bodiesDropped).toBe(true);
+      expect(JSON.stringify(out).length).toBeLessThanOrEqual(ERROR_EVENT_MAX_BYTES);
+      expect(out.networkRequests).toHaveLength(50);
+      expect(out.error.stack).toHaveLength(10_000);
+    });
+
+    it('counts UTF-8 bytes with the utf8 unit, so non-ASCII telemetry stays under the budget', () => {
+      const payload = {
+        ...errorEvent(),
+        networkRequests: Array.from({ length: 50 }, (_, i) => ({
+          ...makeNetworkRequest(i, 0),
+          requestBody: 'ж'.repeat(1_500),
+          responseBody: '日本'.repeat(500),
+        })),
+      };
+      const utf8Bytes = (value: unknown) => new TextEncoder().encode(JSON.stringify(value)).length;
+      expect(JSON.stringify(payload).length).toBeLessThan(ERROR_EVENT_MAX_BYTES);
+      expect(utf8Bytes(payload)).toBeGreaterThan(ERROR_EVENT_MAX_BYTES);
+
+      const { payload: out, info } = trimPayload(payload, ERROR_EVENT_MAX_BYTES, 'utf8');
+
+      expect(info.bodiesDropped).toBe(true);
+      expect(utf8Bytes(out)).toBeLessThanOrEqual(ERROR_EVENT_MAX_BYTES);
+      expect(out.networkRequests).toHaveLength(50);
+    });
+
+    it('keeps the 10 MB budget when no maxBytes is given', () => {
+      const payload = errorEvent();
+      const before = JSON.stringify(payload);
+
+      const { payload: out, info } = trimPayload(payload);
+
+      expect(info.trimmed).toBe(false);
+      expect(JSON.stringify(out)).toBe(before);
+    });
+  });
 });

@@ -1,16 +1,22 @@
 import type {
   BugdumpConfig,
+  BugdumpErrorEvent,
   BugdumpTheme,
   BugdumpUserContext,
+  ErrorEventPayload,
   ReportPayload,
   ReportResponse,
   SubmitOptions,
 } from './types';
 import { resolveConfig, type ResolvedBugdumpConfig } from './core/config';
 import { createInitialState, type SdkState } from './core/state';
-import { HttpClient } from './http-client';
+import { HTML2CANVAS_CHUNK, REPLAY_CHUNK, scriptBaseUrl } from './core/chunk-loader';
+import { getDebugIdsForStack } from './core/debug-ids';
+import { createUuid } from './core/uuid';
+import { BugdumpApiError, HttpClient } from './http-client';
 import { ConsoleCollector } from './collectors/console';
 import { NetworkCollector } from './collectors/network';
+import { ErrorCollector, type CapturedErrorDetails } from './collectors/error';
 import { SessionReplayCollector, SESSION_REPLAY_WINDOW_MS, trimReplayToBudget } from './collectors/session-replay';
 import { ReplayPacker } from './collectors/replay-serializer';
 import { ActionCollector } from './collectors/action';
@@ -23,8 +29,17 @@ import type { ConsoleLogEntry } from './collectors/console';
 import type { NetworkRequestEntry } from './collectors/network';
 import type { PerformanceSnapshot } from './collectors/performance';
 import type { MetadataSnapshot } from './collectors/metadata';
-import { trimPayload } from './core/payload-trimmer';
+import { trimPayload, type TrimInfo } from './core/payload-trimmer';
 import type { eventWithTime } from '@rrweb/types';
+
+const ERROR_MESSAGE_MAX_LENGTH = 2_000;
+const ERROR_STACK_MAX_LENGTH = 32_000;
+const ERROR_CONSOLE_LOGS = 100;
+const ERROR_NETWORK_REQUESTS = 50;
+const ERROR_ACTIONS = 200;
+const ERROR_ACTIONS_WINDOW_MS = 60_000;
+// Under the error route's 256 KB body limit.
+const ERROR_EVENT_MAX_BYTES = 200 * 1024;
 
 export interface TelemetrySnapshot {
   consoleLogs: ConsoleLogEntry[];
@@ -35,7 +50,7 @@ export interface TelemetrySnapshot {
 }
 
 type ReportInput = Omit<PanelSubmitData, 'attachments'> & {
-  attachments: Omit<Attachment, 'id'>[];
+  attachments: (Omit<Attachment, 'id'> & { id?: string })[];
   priority?: string;
 };
 
@@ -50,7 +65,13 @@ export class Bugdump {
   private networkCollector: NetworkCollector;
   private sessionReplayCollector: SessionReplayCollector;
   private actionCollector: ActionCollector;
+  private errorCollector: ErrorCollector | null = null;
   private widget: Widget | null = null;
+  /**
+   * Uploaded file id per panel attachment blob, so a resent report neither presigns nor uploads a
+   * file again. Keyed by the blob, because annotating a screenshot replaces it under the same id.
+   */
+  private uploadedFileIds = new WeakMap<Blob, string>();
 
   private constructor() {
     this.state = createInitialState();
@@ -79,7 +100,15 @@ export class Bugdump {
     instance.networkCollector = new NetworkCollector({
       captureBodies: resolved.captureNetworkBodies,
       filter: resolved.networkFilter,
+      endpoint: resolved.endpoint,
     });
+    const errorCollector = new ErrorCollector({
+      sampleRate: resolved.sampleRate,
+      ignoreErrors: resolved.ignoreErrors,
+      sdkFiles: getSdkFileUrls(),
+      onCapture: (error, context) => void instance.sendErrorEvent(error, context),
+    });
+    instance.errorCollector = errorCollector;
 
     // Published before the collectors and the widget start: they patch globals and touch the
     // DOM, and if either fails the instance must still be reachable so destroy() can unwind it.
@@ -89,6 +118,7 @@ export class Bugdump {
       instance.consoleCollector.start();
       instance.networkCollector.start();
       instance.actionCollector.start();
+      if (resolved.captureErrors) errorCollector.start();
     }
 
     instance.mountWidget();
@@ -145,6 +175,23 @@ export class Bugdump {
   setContext(context: Record<string, unknown>): void {
     this.ensureInitialized();
     this.state.customContext = { ...this.state.customContext, ...context };
+  }
+
+  /**
+   * Sends an error you caught yourself, marked handled. `options.context` is merged over the
+   * `setContext()` data for this event only. Never throws.
+   */
+  captureException(error: unknown, options?: { context?: Record<string, unknown> }): void {
+    if (!this.state.initialized || !this.errorCollector) {
+      console.warn('[Bugdump] captureException ignored: call Bugdump.init() first.');
+      return;
+    }
+    // Callers include error boundaries, which must not fail again inside their own handler.
+    try {
+      this.errorCollector.captureException(error, options?.context);
+    } catch (captureError) {
+      console.warn('[Bugdump] captureException failed:', captureError);
+    }
   }
 
   setTheme(theme: BugdumpTheme): void {
@@ -223,6 +270,7 @@ export class Bugdump {
     }
 
     const result = await this.sendReport({
+      clientReportId: createUuid(),
       description: options.description,
       reporterName: options.reporterName ?? '',
       reporterEmail: options.reporterEmail ?? '',
@@ -252,6 +300,8 @@ export class Bugdump {
     this.networkCollector.stop();
     this.sessionReplayCollector.stop();
     this.actionCollector.stop();
+    this.errorCollector?.stop();
+    this.errorCollector = null;
     this.state = createInitialState();
     this.httpClient = null;
     Bugdump.instance = null;
@@ -282,7 +332,9 @@ export class Bugdump {
   private startSessionReplay(allowedByPlan: boolean): void {
     if (!Bugdump.isBrowser) return;
     if (!this.state.config?.features.sessionReplay || !allowedByPlan) return;
-    void this.sessionReplayCollector.start();
+    this.sessionReplayCollector.start().catch((error: unknown) => {
+      console.warn('[Bugdump] Session replay could not start:', error);
+    });
   }
 
   private mountWidget(): void {
@@ -341,18 +393,24 @@ export class Bugdump {
       uploadIndex++;
       const currentIndex = uploadIndex;
 
-      const uploadResponse = await httpClient.requestUpload({
-        originalName: attachment.name,
-        mimeType: attachment.blob.type || 'application/octet-stream',
-        size: attachment.blob.size,
-      });
+      let fileId = attachment.id ? this.uploadedFileIds.get(attachment.blob) : undefined;
+      if (!fileId) {
+        const uploadResponse = await httpClient.requestUpload({
+          originalName: attachment.name,
+          mimeType: attachment.blob.type || 'application/octet-stream',
+          size: attachment.blob.size,
+        });
 
-      await httpClient.uploadFileToS3(
-        uploadResponse.url,
-        uploadResponse.fields,
-        attachment.blob,
-        onUploadProgress && ((percent) => onUploadProgress(currentIndex, totalUploads, percent)),
-      );
+        await httpClient.uploadFileToS3(
+          uploadResponse.url,
+          uploadResponse.fields,
+          attachment.blob,
+          onUploadProgress && ((percent) => onUploadProgress(currentIndex, totalUploads, percent)),
+        );
+
+        fileId = uploadResponse.fileId;
+        if (attachment.id) this.uploadedFileIds.set(attachment.blob, fileId);
+      }
 
       const attachmentMeta = {
         ...(attachment.textAnnotations ? { textAnnotations: attachment.textAnnotations } : {}),
@@ -360,13 +418,14 @@ export class Bugdump {
       };
 
       uploadedAttachments.push({
-        fileId: uploadResponse.fileId,
+        fileId,
         type: attachment.type,
         metadata: Object.keys(attachmentMeta).length > 0 ? attachmentMeta : undefined,
       });
     }
 
     const payload: ReportPayload = {
+      clientReportId: data.clientReportId,
       taskId: data.taskPublicId ?? this.state.activeTaskId ?? undefined,
       description: data.description,
       priority: data.priority,
@@ -386,18 +445,77 @@ export class Bugdump {
     };
 
     const { payload: trimmedPayload, info } = trimPayload(payload);
-    const telemetryWasTrimmed =
-      info.argsTruncated || info.bodiesDropped || info.consoleLogsDropped > 0 || info.networkRequestsDropped > 0;
-    if (telemetryWasTrimmed) {
-      trimmedPayload.telemetryTrimmed = {
-        argsTruncated: info.argsTruncated,
-        bodiesDropped: info.bodiesDropped,
-        consoleLogsDropped: info.consoleLogsDropped,
-        networkRequestsDropped: info.networkRequestsDropped,
-      };
-    }
+    trimmedPayload.telemetryTrimmed = describeTrimming(info);
 
-    return httpClient.submitReport(trimmedPayload);
+    const result = await httpClient.submitReport(trimmedPayload);
+    for (const attachment of data.attachments) {
+      this.uploadedFileIds.delete(attachment.blob);
+    }
+    return result;
+  }
+
+  /** Sends one captured error. Swallows its own failures, so a failed send is never captured as an error. */
+  private async sendErrorEvent(error: CapturedErrorDetails, context?: Record<string, unknown>): Promise<void> {
+    try {
+      const config = this.state.config;
+      const httpClient = this.httpClient;
+      if (!config || !httpClient) return;
+
+      const customContext = { ...this.state.customContext, ...context };
+      const event = applyBeforeSend(
+        {
+          eventId: createUuid(),
+          occurredAt: Date.now(),
+          release: config.release,
+          error: {
+            ...error,
+            message: error.message.slice(0, ERROR_MESSAGE_MAX_LENGTH),
+            stack: error.stack?.slice(0, ERROR_STACK_MAX_LENGTH),
+          },
+          customContext: Object.keys(customContext).length > 0 ? customContext : undefined,
+        },
+        config.beforeSend,
+      );
+      if (!event) return;
+
+      const metadata = captureMetadata();
+      const user = this.state.user;
+      const debugIds = getDebugIdsForStack(event.error.stack, event.error.filename);
+      const actions = this.actionCollector.getRecentActions(ERROR_ACTIONS_WINDOW_MS).slice(-ERROR_ACTIONS);
+      const payload: ErrorEventPayload = {
+        eventId: event.eventId,
+        occurredAt: event.occurredAt,
+        release: event.release,
+        debugIds: Object.keys(debugIds).length > 0 ? debugIds : undefined,
+        error: event.error,
+        reporterName: user?.name || undefined,
+        reporterEmail: user?.email || undefined,
+        reporterExternalId: user?.id || undefined,
+        pageUrl: metadata.url,
+        referrerUrl: metadata.referrer || undefined,
+        userAgent: metadata.userAgent,
+        viewport: metadata.viewport,
+        // Copies, because trimming rewrites entries in place and the buffers still serve later reports.
+        consoleLogs: this.consoleCollector
+          .snapshot()
+          .slice(-ERROR_CONSOLE_LOGS)
+          .map((entry) => ({ ...entry })),
+        networkRequests: this.networkCollector
+          .snapshot()
+          .slice(-ERROR_NETWORK_REQUESTS)
+          .map((entry) => ({ ...entry })),
+        actions: actions.length > 0 ? actions : undefined,
+        performance: capturePerformance() as unknown as Record<string, unknown>,
+        customContext: event.customContext,
+      };
+
+      const { payload: trimmedPayload, info } = trimPayload(payload, ERROR_EVENT_MAX_BYTES, 'utf8');
+      trimmedPayload.telemetryTrimmed = describeTrimming(info);
+
+      await httpClient.submitErrorEvent(trimmedPayload);
+    } catch (sendError) {
+      if (stopsErrorCapture(sendError)) this.errorCollector?.halt();
+    }
   }
 
   private ensureInitialized(): void {
@@ -405,4 +523,51 @@ export class Bugdump {
       throw new Error('Bugdump SDK is not initialized. Call Bugdump.init() first.');
     }
   }
+}
+
+function describeTrimming(info: TrimInfo): ReportPayload['telemetryTrimmed'] {
+  const telemetryWasTrimmed =
+    info.argsTruncated || info.bodiesDropped || info.consoleLogsDropped > 0 || info.networkRequestsDropped > 0;
+  if (!telemetryWasTrimmed) return undefined;
+  return {
+    argsTruncated: info.argsTruncated,
+    bodiesDropped: info.bodiesDropped,
+    consoleLogsDropped: info.consoleLogsDropped,
+    networkRequestsDropped: info.networkRequestsDropped,
+  };
+}
+
+/** A throw in the hook sends the event as it was, so the copy it gets keeps the original intact. */
+function applyBeforeSend(
+  event: BugdumpErrorEvent,
+  beforeSend: ResolvedBugdumpConfig['beforeSend'],
+): BugdumpErrorEvent | null {
+  if (!beforeSend) return event;
+  try {
+    return beforeSend({
+      ...event,
+      error: { ...event.error },
+      customContext: event.customContext && { ...event.customContext },
+    });
+  } catch (hookError) {
+    console.warn('[Bugdump] beforeSend threw, so the error event is sent unchanged:', hookError);
+    return event;
+  }
+}
+
+function stopsErrorCapture(error: unknown): boolean {
+  return (
+    error instanceof BugdumpApiError &&
+    error.statusCode === 403 &&
+    (error.code === 'ERROR_CAPTURE_DISABLED' || error.code === 'ERROR_QUOTA_EXCEEDED')
+  );
+}
+
+/** The SDK's own script and chunk URLs, so errors thrown only in them are dropped. The npm build has none. */
+function getSdkFileUrls(): string[] {
+  if (!__BUGDUMP_IIFE__ || !scriptBaseUrl) return [];
+  return [
+    scriptBaseUrl,
+    ...[REPLAY_CHUNK, HTML2CANVAS_CHUNK].map((chunk) => new URL(`./${chunk}`, scriptBaseUrl).href),
+  ];
 }

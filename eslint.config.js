@@ -15,6 +15,13 @@ export default tseslint.config(
     },
   },
   {
+    // Only `var` declares the debug ID global on `globalThis`, where the CLI's injected snippet writes it.
+    files: ['src/globals.d.ts'],
+    rules: {
+      'no-var': 'off',
+    },
+  },
+  {
     files: ['src/**/*.ts'],
     languageOptions: {
       parserOptions: {

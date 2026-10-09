@@ -5,6 +5,7 @@ export type { TelemetrySnapshot } from './lib/client';
 export { BugdumpApiError, HttpClient } from './lib/http-client';
 export type {
   BugdumpConfig,
+  BugdumpErrorEvent,
   BugdumpLocale,
   BugdumpPosition,
   BugdumpTheme,
@@ -14,6 +15,7 @@ export type {
   ConsoleFilterEntry,
   ConsoleFilterOptions,
   ConsoleLogLevel,
+  ErrorEventPayload,
   NetworkFilterEntry,
   NetworkFilterOptions,
   ReportPayload,

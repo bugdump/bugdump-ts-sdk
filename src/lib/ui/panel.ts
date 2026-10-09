@@ -27,6 +27,7 @@ import { AnnotationOverlay, renderOperationsToCanvas } from '../capture/annotati
 import type { TextOperation } from '../capture/annotation';
 import { en } from '../i18n/en';
 import { BugdumpApiError } from '../http-client';
+import { createUuid } from '../core/uuid';
 import type { BugdumpTheme, BugdumpTranslations, CaptureMethod, ReportResponse, UserAction } from '../types';
 import type { SessionReplayCollector } from '../collectors/session-replay';
 import { trimReplayToBudget, SESSION_REPLAY_WINDOW_MS } from '../collectors/session-replay';
@@ -63,6 +64,7 @@ export class Panel {
   private attachments: Attachment[] = [];
   private visible = false;
   private submitting = false;
+  private clientReportId: string | null = null;
   private acceptingReports = true;
   private showingSuccess = false;
   private recording = false;
@@ -284,6 +286,7 @@ export class Panel {
     }
     if (!preserveAttachments) {
       this.clearAttachments();
+      this.clientReportId = null;
     }
     // Deliberately do NOT restart the replay collector here. It buffers continuously across
     // transient hides (e.g. hiding the panel to take a screenshot) so the session replay
@@ -568,11 +571,15 @@ export class Panel {
     this.captureSessionReplay();
 
     this.setSubmitting(true);
+    // Kept until the report succeeds or the panel closes, so pressing Send again after a failure
+    // resends the same report instead of filing a second one.
+    this.clientReportId ??= createUuid();
 
     try {
       const taskPublicId = this.features.allowTaskAttach ? parseTaskIdInput(this.elements.taskInput.value) : null;
 
       const result = await this.onSubmit({
+        clientReportId: this.clientReportId,
         description,
         reporterName: this.elements.nameInput.value.trim(),
         reporterEmail: this.elements.emailInput.value.trim(),
@@ -580,6 +587,7 @@ export class Panel {
         attachments: [...this.attachments],
         actions: [...this.derivedActions],
       });
+      this.clientReportId = null;
       this.showSuccessView(String(result.taskPublicId));
     } catch (err) {
       if (

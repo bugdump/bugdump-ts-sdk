@@ -17,6 +17,8 @@ export interface NetworkRequestEntry {
 export interface NetworkCollectorOptions {
   captureBodies?: boolean;
   filter?: NetworkFilterOptions;
+  /** The Bugdump API endpoint. Requests to its widget routes are the SDK's own and never recorded. */
+  endpoint?: string;
 }
 
 const MAX_ENTRIES = 150;
@@ -109,6 +111,10 @@ export class NetworkCollector {
     }
   }
 
+  private isOwnRequest(url: string): boolean {
+    return !!this.options.endpoint && url.startsWith(`${this.options.endpoint}/api/widget/`);
+  }
+
   private shouldKeep(entry: NetworkRequestEntry): boolean {
     const filter = this.options.filter;
     if (!filter) return true;
@@ -142,6 +148,7 @@ export class NetworkCollector {
     window.fetch = async function (input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
       const method = init?.method?.toUpperCase() || 'GET';
       const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+      if (self.isOwnRequest(url)) return self.originalFetch!.call(window, input, init);
       const startedAt = Date.now();
       const requestHeaders = self.extractHeaders(init?.headers);
       const requestBody = self.options.captureBodies ? self.serializeBody(init?.body) : null;
@@ -223,6 +230,7 @@ export class NetworkCollector {
       const startedAt = Date.now();
       const method = this.__bd_method || 'GET';
       const url = this.__bd_url || '';
+      if (self.isOwnRequest(url)) return self.originalXhrSend!.call(this, body);
       const requestBody = self.options.captureBodies ? self.serializeBody(body) : null;
 
       const onDone = () => {

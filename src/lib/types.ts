@@ -124,6 +124,57 @@ export interface BugdumpConfig {
   translations?: BugdumpTranslations;
   consoleFilter?: ConsoleFilterOptions;
   networkFilter?: NetworkFilterOptions;
+  /** Send uncaught errors and unhandled promise rejections automatically. Defaults to `true`. */
+  captureErrors?: boolean;
+  /** Your build's version, such as a git commit. An error that comes back in a new release reopens its task. */
+  release?: string;
+  /** Share of automatically captured errors to send, from 0 to 1. Defaults to `1`. Never applies to `captureException`. */
+  sampleRate?: number;
+  /** Automatically captured errors whose `type: message` matches one of these are not sent. Strings match as substrings. */
+  ignoreErrors?: Array<string | RegExp>;
+  /** Called before an error event is sent. Return the event, changed or not, to send it, or `null` to drop it. */
+  beforeSend?: (event: BugdumpErrorEvent) => BugdumpErrorEvent | null;
+}
+
+export type ErrorMechanism = 'onerror' | 'unhandledrejection' | 'manual';
+
+export interface BugdumpErrorEvent {
+  eventId: string;
+  occurredAt: number;
+  release?: string;
+  error: {
+    type: string;
+    message: string;
+    stack?: string;
+    filename?: string;
+    lineno?: number;
+    colno?: number;
+    mechanism: ErrorMechanism;
+    handled: boolean;
+  };
+  customContext?: Record<string, unknown>;
+}
+
+export interface ErrorEventPayload {
+  eventId: string;
+  occurredAt: number;
+  release?: string;
+  /** Script URL to debug ID, for the files in the error's stack. */
+  debugIds?: Record<string, string>;
+  error: BugdumpErrorEvent['error'];
+  reporterName?: string;
+  reporterEmail?: string;
+  reporterExternalId?: string;
+  pageUrl?: string;
+  referrerUrl?: string;
+  userAgent?: string;
+  viewport?: { width: number; height: number };
+  consoleLogs?: Record<string, unknown>[];
+  networkRequests?: Record<string, unknown>[];
+  actions?: UserAction[];
+  performance?: Record<string, unknown>;
+  customContext?: Record<string, unknown>;
+  telemetryTrimmed?: ReportPayload['telemetryTrimmed'];
 }
 
 export interface BugdumpUserContext {
@@ -146,6 +197,8 @@ export interface UserAction {
 }
 
 export interface ReportPayload {
+  /** A uuid per report. A resend with the same id gets the first result instead of a second task. */
+  clientReportId?: string;
   taskId?: number;
   description: string;
   /** A priority option label as the project defines it, e.g. "High". Matched case-insensitively; one the project does not have is ignored and the report is still filed. */

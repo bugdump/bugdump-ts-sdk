@@ -6,6 +6,7 @@ Official TypeScript SDK for [Bugdump](https://bugdump.com) - embed a bug reporti
 
 - **Embeddable widget** - Floating bug report button with screenshot, screen recording, and voice notes
 - **Auto-collects telemetry** - Console logs, network requests, session replay, and performance data
+- **Automatic error capture** - Uncaught errors and unhandled promise rejections, grouped on your project's Errors page, with readable stack traces from your source maps
 - **Screenshot annotations** - Users can draw, highlight, and blur parts of screenshots
 - **TypeScript-first** - Full type definitions out of the box
 - **Shadow DOM isolated** - Widget styles never leak into your app
@@ -65,13 +66,13 @@ const bugdump = Bugdump.init({
 
 The three-line stub makes `bugdump(...)` safe to call immediately: until the SDK arrives it queues calls, and when the script loads the SDK replays them in order and replaces the stub with a live dispatcher — so the same `bugdump(...)` calls work before and after load. Without it, an inline `Bugdump.init(...)` would race the `async` download and throw `Bugdump is not defined`.
 
-Any fire-and-forget method can be a command: `bugdump('identify', { email: '...' })`, `bugdump('open', { taskId: 42 })`, `bugdump('setContext', {...})`, plus `setTheme`, `reset`, `close`, `identifyTask`, `clearTask`, and `destroy`. Methods that return a value (`getInstance`, `submit`, `collectTelemetry`, `getConfig`, ...) are not commands — a queued call has nowhere to return to. Call those on `window.Bugdump` once the script has loaded.
+Any fire-and-forget method can be a command: `bugdump('identify', { email: '...' })`, `bugdump('open', { taskId: 42 })`, `bugdump('setContext', {...})`, `bugdump('captureException', error)`, plus `setTheme`, `reset`, `close`, `identifyTask`, `clearTask`, and `destroy`. Methods that return a value (`getInstance`, `submit`, `collectTelemetry`, `getConfig`, ...) are not commands — a queued call has nowhere to return to. Call those on `window.Bugdump` once the script has loaded.
 
 ## How the SDK Loads
 
 The script tag build loads in two stages, so a page only downloads what it actually uses.
 
-**The entry** (`latest.js`, ~118 KB / ~28 KB gzipped) carries the widget, the console/network/action collectors, and report submission. Every page pays this.
+**The entry** (`latest.js`, ~143 KB / ~36 KB gzipped) carries the widget, the console/network/action collectors, error capture, and report submission. Every page pays this.
 
 **Two optional chunks** are fetched on demand and never touch a page that does not need them:
 
@@ -101,6 +102,9 @@ const bugdump = Bugdump.init({
   hideButton: false, // Hide the floating button
   showReportLink: false, // Show report link after submission
   captureNetworkBodies: false, // Capture request/response bodies
+  captureErrors: true, // Send uncaught errors and unhandled rejections
+  release: '1.4.2', // Your build's version, shown with each error
+  sampleRate: 1, // Share of automatically captured errors to send, 0 to 1
   features: {
     screenshot: true, // Screenshot capture
     screenshotMethod: 'screen-capture', // 'screen-capture' (getDisplayMedia) or 'dom' (html2canvas)
@@ -125,6 +129,9 @@ const bugdump = Bugdump.init({
 | `icon`                 | `string`                      | `'chat'`                  | Custom trigger button icon (see [Custom Icon](#custom-icon) below)                                                                                                                                  |
 | `bubbleText`           | `string`                      | —                         | Show a dismissible teaser bubble next to the floating button (e.g. `"Found a bug?"`). Clicking it opens the widget; dismissing it is remembered in `localStorage`. Ignored when `hideButton` is set |
 | `captureNetworkBodies` | `boolean`                     | `false`                   | Include request/response bodies in network logs                                                                                                                                                     |
+| `captureErrors`        | `boolean`                     | `true`                    | Send uncaught errors and unhandled promise rejections (see [Automatic error capture](#automatic-error-capture))                                                                                     |
+| `release`              | `string`                      | —                         | Your build's version, such as a git commit. Decides when an error reopens its resolved task                                                                                                         |
+| `sampleRate`           | `number`                      | `1`                       | Share of automatically captured errors to send, from `0` to `1`. Never applies to `captureException` or widget reports                                                                              |
 | `features`             | `object`                      | all `true`                | Enable/disable widget features (see below)                                                                                                                                                          |
 | `translations`         | `object`                      | —                         | Override widget UI strings on top of the language (see below)                                                                                                                                       |
 
@@ -343,6 +350,9 @@ Use `data-*` attributes to configure the widget. All attributes are optional exc
   data-session-replay="true"
   data-attachments="true"
   data-allow-task-attach="false"
+  data-capture-errors="true"
+  data-release="1.4.2"
+  data-sample-rate="1"
   data-translations='{"title":"Report a bug","sendButton":"Send report"}'
 ></script>
 ```
@@ -366,9 +376,14 @@ Use `data-*` attributes to configure the widget. All attributes are optional exc
 | `data-session-replay`          | `features.sessionReplay`         | `true`                    | Background session replay collection                                                    |
 | `data-attachments`             | `features.attachments`           | `true`                    | File attachment button                                                                  |
 | `data-allow-task-attach`       | `features.allowTaskAttach`       | `false`                   | Show "Attach to task" toggle in the widget                                              |
+| `data-capture-errors`          | `captureErrors`                  | `true`                    | Send uncaught errors and unhandled promise rejections                                   |
+| `data-release`                 | `release`                        | —                         | Your build's version, such as a git commit                                              |
+| `data-sample-rate`             | `sampleRate`                     | `1`                       | Share of automatically captured errors to send, from `0` to `1` (see below)             |
 | `data-translations`            | `translations`                   | —                         | JSON string with translation overrides                                                  |
 | `data-console-filter`          | `consoleFilter`                  | —                         | JSON object with `levels` / `exclude` arrays (strings only)                             |
 | `data-network-filter`          | `networkFilter`                  | —                         | JSON object with `excludeUrls` / `includeUrls` / `excludeMethods` arrays (strings only) |
+
+`data-sample-rate` never applies to `captureException` or to widget reports, which are always sent. An empty value is ignored rather than read as `0`.
 
 ### Theme
 
@@ -734,6 +749,141 @@ bugdump.setContext({
 });
 ```
 
+## Automatic error capture
+
+The SDK sends the uncaught errors and unhandled promise rejections on your site to Bugdump by itself, with the console logs, network requests and user actions that led up to them. Nothing is shown to the user. Repeats of one error are grouped into a single entry on your project's **Errors** page, with an event count and when it was first and last seen, and from there a teammate turns it into a task or links it to one.
+
+It is on by default. Turn it off for a site with `captureErrors: false`, or for the whole project in its settings.
+
+### npm
+
+```typescript
+Bugdump.init({
+  apiKey: 'your-api-key',
+  captureErrors: true, // send uncaught errors and unhandled rejections
+  release: import.meta.env.VITE_GIT_SHA, // your build's version
+  sampleRate: 1, // share of automatically captured errors to send, 0 to 1
+  ignoreErrors: ['AbortError', /^NetworkError:/], // matched against "type: message"
+  beforeSend(event) {
+    event.error.message = event.error.message.replace(/token=\w+/g, 'token=[redacted]');
+    return event; // or null to drop it
+  },
+});
+```
+
+| Option          | Type                                                      | Default | Description                                                                                                                                                                                              |
+| --------------- | --------------------------------------------------------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `captureErrors` | `boolean`                                                 | `true`  | Send uncaught errors and unhandled promise rejections. `captureException` works either way                                                                                                               |
+| `release`       | `string`                                                  | —       | Your build's version, such as a git commit. Optional; see [Releases](#releases)                                                                                                                          |
+| `sampleRate`    | `number`                                                  | `1`     | Share of automatically captured errors to send, from `0` to `1`, decided once per error. Never applies to `captureException` or widget reports. A value outside 0–1 logs a warning and sends every error |
+| `ignoreErrors`  | `Array<string \| RegExp>`                                 | —       | Automatically captured errors to drop, matched against `type: message`, e.g. `TypeError: Load failed`. Strings match as substrings, RegExp patterns use `.test()`                                        |
+| `beforeSend`    | `(event: BugdumpErrorEvent) => BugdumpErrorEvent \| null` | —       | Change an event before it is sent, or return `null` to drop it                                                                                                                                           |
+
+### Script Tag
+
+```html
+<script
+  src="https://bugdump.com/sdk/latest.js"
+  async
+  data-api-key="your-api-key"
+  data-release="1.4.2"
+  data-sample-rate="0.5"
+></script>
+```
+
+`data-capture-errors="false"` turns automatic capture off. An empty attribute is ignored, so `data-sample-rate=""` sends every error, while `data-sample-rate="0"` sends none. `ignoreErrors` and `beforeSend` take regular expressions and functions, so they have no attribute: to use them, load the script without `data-api-key` and call `bugdump('init', { ... })` (see [Manual IIFE](#manual-iife-without-auto-init)).
+
+### Errors you catch yourself
+
+```typescript
+try {
+  await checkout();
+} catch (error) {
+  bugdump.captureException(error, { context: { step: 'payment' } });
+  showErrorMessage();
+}
+```
+
+`captureException(error, options?)` sends an error your code handled, marked as handled ("Reported by the app" on the error page). `options.context` is merged over your `setContext()` data for that one event. It is sent even when `captureErrors` is off or `sampleRate` is `0`, but it follows the once-per-session and per-minute limits below, so an error boundary that keeps failing cannot flood your project. It never throws; on an instance that is not initialized it logs a warning. From a script tag it is a queued command: `bugdump('captureException', error)`.
+
+### What an error event carries
+
+The error's type, message (up to 2,000 characters) and stack (up to 32,000), `release`, the user from `identify()`, your `setContext()` data, the page URL, browser and viewport, performance data, and the last 100 console logs, 50 network requests and 200 user actions from the last minute. An event is capped at 200 KB of UTF-8 and trimmed in the order described under [Submission payload cap](#submission-payload-cap). Error events carry no screenshot and no session replay.
+
+An event under 64 KB is sent with `keepalive`, so it still arrives when the error happens while the page is unloading.
+
+### beforeSend
+
+`beforeSend` runs for every event, `captureException` included, and receives:
+
+```typescript
+interface BugdumpErrorEvent {
+  eventId: string;
+  occurredAt: number; // ms since the epoch
+  release?: string;
+  error: {
+    type: string; // e.g. "TypeError", or "UnhandledRejection" for a rejected non-Error value
+    message: string;
+    stack?: string;
+    filename?: string;
+    lineno?: number;
+    colno?: number;
+    mechanism: 'onerror' | 'unhandledrejection' | 'manual';
+    handled: boolean;
+  };
+  customContext?: Record<string, unknown>;
+}
+```
+
+Return the event, changed or not, to send it, or `null` to drop it. If `beforeSend` throws, the event is sent unchanged and a warning is logged.
+
+### What is never sent
+
+- `Script error.` with no file and no line: an error from a cross-origin script that the browser hides. Load that script with `crossorigin="anonymous"` and serve it with CORS headers to see its errors.
+- Errors with a frame in a browser extension (`chrome-extension:`, `moz-extension:`, `safari-extension:`, `safari-web-extension:`).
+- `ResizeObserver loop limit exceeded` and `ResizeObserver loop completed with undelivered notifications`, which browsers report for harmless layout loops.
+- Errors from the SDK's own code: its API errors, messages starting with `[Bugdump]`, and, in the script tag build, errors whose stack runs only through the SDK's files. In the npm build the SDK is bundled into your code and cannot tell its frames from yours, so an exception inside the widget's own UI is captured like one of your errors.
+- Errors matching your `ignoreErrors`.
+
+`ignoreErrors` and the list above apply to automatically captured errors; `captureException` sends what you pass it.
+
+### Noise control
+
+After the ignore rules, in this order:
+
+1. **Sampling.** An error is kept when `Math.random() < sampleRate`. A dropped error counts toward neither of the next two limits.
+2. **Once per session.** Each distinct error (the same type, message and top stack frame) is sent once per browser tab session, remembered in `sessionStorage` under `bugdump:sent-errors`.
+3. **10 a minute.** At most 10 error events a minute per page, `captureException` included.
+4. **Stop on refusal.** When the API answers that error capture is off for the project, or that its monthly error limit is used up, the SDK stops sending errors for the rest of the page.
+
+Every event sent counts toward your project's monthly error limit, including events of errors marked Ignored on the Errors page. To stop sending an error, add it to `ignoreErrors`.
+
+### Releases
+
+`release` is optional. It is shown with each error and decides when a resolved task comes back: a task linked to an error reopens when the error arrives from a release it has not been seen in, so a tab still running an old build never reopens it. Without `release`, an error reopens its resolved task only when the task was resolved more than 24 hours ago. Readable stack traces never depend on it.
+
+## Readable stack traces
+
+A stack trace from minified code points into one long line. Upload your source maps with the Bugdump CLI, `@bugdump/cli`, and the error page shows your original files, lines and code instead. The CLI stamps a debug ID into each built JavaScript file and its map, and Bugdump finds the map for every frame by that ID. Maps are stored privately and never served to anyone.
+
+```bash
+npm install --save-dev @bugdump/cli
+```
+
+1. Build with hidden source maps, so the maps are written but your files don't reference them: `vite build --sourcemap hidden`, `devtool: 'hidden-source-map'` in webpack, or `output.sourcemap: 'hidden'` in Rollup.
+2. Run `bugdump sourcemaps inject <dir>` on the build output. It adds a one-line snippet and a `//# debugId=` comment to each JavaScript file that has a map, and the same ID to the map. It needs no token, and running it twice changes nothing.
+3. Run `bugdump sourcemaps upload <dir>` with a release token from your project's **Source maps** page in `BUGDUMP_RELEASE_TOKEN`. `--delete-after` deletes the maps from the folder once they are uploaded, so they are never deployed. `--release` is optional and only affects reopening (see [Releases](#releases)); pass `--endpoint` if you use a custom API endpoint.
+4. Deploy the injected files. A deploy of the output from before `inject` carries no debug IDs, and its frames stay minified.
+
+```bash
+vite build --sourcemap hidden
+bugdump sourcemaps inject dist
+bugdump sourcemaps upload dist --release "$GIT_SHA" --delete-after
+# then deploy dist
+```
+
+Lazily loaded chunks are covered too: each one registers its debug ID when it loads.
+
 ## Programmatic Control
 
 ```typescript
@@ -752,6 +902,9 @@ bugdump.isWidgetOpen();
 
 // Send a report from your own form (see Your Own Report Form)
 await bugdump.submit({ description: 'The checkout button does nothing' });
+
+// Send an error you caught yourself (see Automatic error capture)
+bugdump.captureException(error, { context: { step: 'payment' } });
 
 // Collect telemetry snapshot without submitting
 const telemetry = bugdump.collectTelemetry();
@@ -821,6 +974,8 @@ try {
 
 The built-in widget handles both itself: it shows the `quotaExceededMessage` notice and disables its Send button.
 
+Failed requests are retried before a promise rejects. A report, each of its file uploads and an error event get up to 3 attempts, about 1 s and then 2 s apart, when a request fails on the network, times out after 30 s or gets a `5xx` answer; no other `4xx`, `429` included, is retried. Each report carries a `clientReportId`, so a retry of a report that already arrived gets the first result back instead of creating a second task. The widget keeps that id when you press Send again after a failure, and does not upload the files that already went up. Each `submit()` call makes a new id, so calling `submit()` again after it rejects can file the report twice.
+
 ## TypeScript
 
 The SDK exports all types you need:
@@ -828,6 +983,7 @@ The SDK exports all types you need:
 ```typescript
 import type {
   BugdumpConfig,
+  BugdumpErrorEvent,
   BugdumpLocale,
   BugdumpPosition,
   BugdumpTheme,

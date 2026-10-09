@@ -28,6 +28,7 @@ const INSTANCE_COMMANDS = [
   'close',
   'identifyTask',
   'clearTask',
+  'captureException',
   'destroy',
 ] as const;
 

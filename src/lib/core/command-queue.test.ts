@@ -24,6 +24,7 @@ function makeInstance() {
     close: vi.fn(),
     identifyTask: vi.fn(),
     clearTask: vi.fn(),
+    captureException: vi.fn(),
     destroy: vi.fn(),
   };
 }
@@ -122,6 +123,16 @@ describe('dispatchCommand', () => {
 
     expect(instance.setTheme).toHaveBeenCalledWith('dark');
     expect(console.warn).not.toHaveBeenCalled();
+  });
+
+  it('forwards captureException with its options to the instance', () => {
+    const instance = makeInstance();
+    getInstanceMock.mockReturnValue(instance);
+    const error = new Error('boom');
+
+    dispatchCommand('captureException', [error, { context: { step: 'checkout' } }]);
+
+    expect(instance.captureException).toHaveBeenCalledWith(error, { context: { step: 'checkout' } });
   });
 
   it('warns on an unknown command without touching the instance', () => {

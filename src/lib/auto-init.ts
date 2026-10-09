@@ -1,5 +1,6 @@
 import { Bugdump } from './client';
 import { BUGDUMP_POSITIONS } from './core/config';
+import type { BugdumpConfig } from './types';
 
 // Auto-init: detect <script data-api-key="..."> and initialize automatically
 export function runAutoInit(): void {
@@ -48,6 +49,15 @@ export function runAutoInit(): void {
     if (el.hasAttribute('data-allow-task-attach'))
       features.allowTaskAttach = el.getAttribute('data-allow-task-attach') !== 'false';
 
+    // Passed whenever present and not blank, so `false` and `0` survive and an empty value is ignored.
+    const errorCapture: Pick<BugdumpConfig, 'captureErrors' | 'release' | 'sampleRate'> = {};
+    const captureErrors = readNonBlank(el, 'data-capture-errors');
+    if (captureErrors !== null) errorCapture.captureErrors = captureErrors !== 'false';
+    const release = readNonBlank(el, 'data-release');
+    if (release !== null) errorCapture.release = release;
+    const sampleRate = readNonBlank(el, 'data-sample-rate');
+    if (sampleRate !== null) errorCapture.sampleRate = parseFloat(sampleRate);
+
     let translations: Record<string, string> | undefined;
     const translationsAttr = el.getAttribute('data-translations');
     if (translationsAttr) {
@@ -95,6 +105,7 @@ export function runAutoInit(): void {
         ...(translations && { translations }),
         ...(consoleFilter && { consoleFilter }),
         ...(networkFilter && { networkFilter }),
+        ...errorCapture,
       });
       console.debug('[Bugdump] Auto-init: initialized successfully');
     } else {
@@ -103,6 +114,11 @@ export function runAutoInit(): void {
   } else {
     console.debug('[Bugdump] Auto-init: no script tag with data-api-key found, skipping');
   }
+}
+
+function readNonBlank(el: HTMLElement, name: string): string | null {
+  const value = el.getAttribute(name)?.trim();
+  return value || null;
 }
 
 function parseFilterAttribute(

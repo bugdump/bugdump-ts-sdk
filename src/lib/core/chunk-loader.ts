@@ -21,7 +21,7 @@ export const HTML2CANVAS_CHUNK = 'bugdump-html2canvas.js';
 export const REPLAY_CHUNK = 'bugdump-replay.js';
 
 /** The script's own URL, used to resolve sibling chunks served next to it. */
-const scriptBaseUrl = (() => {
+export const scriptBaseUrl = (() => {
   if (typeof document === 'undefined') return '';
   // Only valid during the script's initial synchronous run, so it is read once, here —
   // reading it later (inside a click handler, say) always yields null.

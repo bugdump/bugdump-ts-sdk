@@ -121,3 +121,55 @@ describe('NetworkCollector body capture (readCappedBody via fetch)', () => {
     collector.stop();
   });
 });
+
+describe("NetworkCollector skips the SDK's own requests", () => {
+  const ENDPOINT = 'https://api.bugdump.test';
+
+  class LoadingXHR {
+    status = 200;
+    statusText = 'OK';
+    responseText = '';
+    private listeners: Array<() => void> = [];
+    open(): void {}
+    send(): void {
+      for (const listener of this.listeners) listener();
+    }
+    addEventListener(_type: string, listener: () => void): void {
+      this.listeners.push(listener);
+    }
+    removeEventListener(): void {}
+    getAllResponseHeaders(): string {
+      return '';
+    }
+  }
+
+  it('does not record fetches to the widget API, but records the rest', async () => {
+    const collector = new NetworkCollector({ endpoint: ENDPOINT });
+    collector.start();
+
+    await g.window!.fetch(`${ENDPOINT}/api/widget/v1/errors`, { method: 'POST' });
+    await g.window!.fetch(`${ENDPOINT}/api/other`);
+    await g.window!.fetch('https://shop.test/api/cart');
+
+    expect(collector.snapshot().map((entry) => entry.url)).toEqual([
+      `${ENDPOINT}/api/other`,
+      'https://shop.test/api/cart',
+    ]);
+    collector.stop();
+  });
+
+  it('does not record XHRs to the widget API, but records the rest', () => {
+    g.XMLHttpRequest = LoadingXHR;
+    const collector = new NetworkCollector({ endpoint: ENDPOINT });
+    collector.start();
+
+    for (const url of [`${ENDPOINT}/api/widget/v1/reports`, 'https://shop.test/api/cart']) {
+      const xhr = new LoadingXHR() as unknown as XMLHttpRequest;
+      xhr.open('POST', url);
+      xhr.send();
+    }
+
+    expect(collector.snapshot().map((entry) => entry.url)).toEqual(['https://shop.test/api/cart']);
+    collector.stop();
+  });
+});
