@@ -154,7 +154,7 @@ export class Bugdump {
   }
 
   identify(user: BugdumpUserContext): void {
-    this.ensureInitialized();
+    if (!this.state.initialized) return;
     this.state.user = user;
 
     if (this.widget) {
@@ -163,7 +163,7 @@ export class Bugdump {
   }
 
   reset(): void {
-    this.ensureInitialized();
+    if (!this.state.initialized) return;
     this.state.user = null;
     this.state.customContext = {};
 
@@ -173,7 +173,7 @@ export class Bugdump {
   }
 
   setContext(context: Record<string, unknown>): void {
-    this.ensureInitialized();
+    if (!this.state.initialized) return;
     this.state.customContext = { ...this.state.customContext, ...context };
   }
 
@@ -195,12 +195,12 @@ export class Bugdump {
   }
 
   setTheme(theme: BugdumpTheme): void {
-    this.ensureInitialized();
+    if (!this.state.initialized) return;
     this.widget?.setTheme(theme);
   }
 
   open(options?: { taskId?: number }): void {
-    this.ensureInitialized();
+    if (!this.state.initialized) return;
     if (options?.taskId !== undefined) {
       this.state.activeTaskId = options.taskId;
     }
@@ -209,18 +209,18 @@ export class Bugdump {
   }
 
   close(): void {
-    this.ensureInitialized();
+    if (!this.state.initialized) return;
     this.state.widgetOpen = false;
     this.widget?.close();
   }
 
   identifyTask(taskPublicId: number): void {
-    this.ensureInitialized();
+    if (!this.state.initialized) return;
     this.state.activeTaskId = taskPublicId;
   }
 
   clearTask(): void {
-    this.ensureInitialized();
+    if (!this.state.initialized) return;
     this.state.activeTaskId = null;
   }
 
@@ -293,6 +293,7 @@ export class Bugdump {
   }
 
   destroy(): void {
+    if (!this.state.initialized) return;
     this.httpClient?.abort();
     this.widget?.destroy();
     this.widget = null;
@@ -304,7 +305,8 @@ export class Bugdump {
     this.errorCollector = null;
     this.state = createInitialState();
     this.httpClient = null;
-    Bugdump.instance = null;
+    // A stale instance destroyed after a new init() must not orphan the live one.
+    if (Bugdump.instance === this) Bugdump.instance = null;
   }
 
   getConfig(): ResolvedBugdumpConfig | null {
@@ -518,9 +520,11 @@ export class Bugdump {
     }
   }
 
+  // Only for the methods that return something. The fire-and-forget ones return early instead,
+  // because cleanups (React effects among them) can still reach an instance after destroy().
   private ensureInitialized(): void {
     if (!this.state.initialized) {
-      throw new Error('Bugdump SDK is not initialized. Call Bugdump.init() first.');
+      throw new Error('This Bugdump instance was destroyed.');
     }
   }
 }

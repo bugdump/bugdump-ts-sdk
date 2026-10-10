@@ -48,6 +48,22 @@ const bugdump = Bugdump.init({
 });
 ```
 
+### React
+
+[`@bugdump/react`](https://www.npmjs.com/package/@bugdump/react) wraps the SDK for React and Next.js: a provider that starts the widget once and cleans it up, a `useBugdump()` hook, and an error boundary that sends the errors React catches. Both packages are released together, at the same version.
+
+```bash
+npm install @bugdump/react @bugdump/sdk
+```
+
+```tsx
+import { BugdumpProvider } from '@bugdump/react';
+
+<BugdumpProvider config={{ apiKey: 'your-api-key' }}>
+  <App />
+</BugdumpProvider>;
+```
+
 ### Manual IIFE (without auto-init)
 
 ```html
@@ -174,7 +190,7 @@ Bugdump.init({
 });
 ```
 
-`Bugdump.getInstance()?.getConfig()?.locale` returns the language the widget uses: the tag you passed, or the one `auto` picked. The widget sets it as its `lang` attribute. The language is read once at `init`; to switch it in a single-page app, call `destroy()` and `init()` again. `bubbleText` is your own text and is not translated.
+`Bugdump.getInstance()?.getConfig()?.locale` returns the language the widget uses: the tag you passed, or the one `auto` picked. The widget sets it as its `lang` attribute. The language is read once at `init`; to switch it in a single-page app, call `destroy()` and `init()` again. With `@bugdump/react`, change the provider's `locale` instead. `bubbleText` is your own text and is not translated.
 
 | Key                       | Default                                                                  | Description                                                                                   |
 | ------------------------- | ------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------- |
@@ -574,24 +590,19 @@ With the queue stub, a click that lands before the SDK has finished downloading 
 ### React example
 
 ```tsx
-import { useEffect, useCallback } from 'react';
-import { Bugdump } from '@bugdump/sdk';
+import { BugdumpProvider, useBugdump } from '@bugdump/react';
 
 function App() {
-  useEffect(() => {
-    const bugdump = Bugdump.init({
-      apiKey: 'your-api-key',
-      hideButton: true,
-    });
+  return (
+    <BugdumpProvider config={{ apiKey: 'your-api-key', hideButton: true }}>
+      <ReportButton />
+    </BugdumpProvider>
+  );
+}
 
-    return () => bugdump.destroy();
-  }, []);
-
-  const openReportForm = useCallback(() => {
-    Bugdump.getInstance()?.open();
-  }, []);
-
-  return <button onClick={openReportForm}>Report a Bug</button>;
+function ReportButton() {
+  const bugdump = useBugdump();
+  return <button onClick={() => bugdump?.open()}>Report a Bug</button>;
 }
 ```
 
@@ -670,34 +681,36 @@ function onUserLogout() {
 
 ```tsx
 import { useEffect } from 'react';
-import { Bugdump } from '@bugdump/sdk';
+import { BugdumpProvider, useBugdump } from '@bugdump/react';
 
 function App() {
   const user = useAuth(); // your auth hook
 
-  useEffect(() => {
-    const bugdump = Bugdump.init({
-      apiKey: 'your-api-key',
-    });
+  return (
+    <BugdumpProvider config={{ apiKey: 'your-api-key' }} enabled={user !== null}>
+      <IdentifyUser user={user} />
+      {/* your app */}
+    </BugdumpProvider>
+  );
+}
 
+function IdentifyUser({ user }: { user: User | null }) {
+  const bugdump = useBugdump();
+
+  useEffect(() => {
+    if (!bugdump) return;
     if (user) {
-      bugdump.identify({
-        id: user.id,
-        name: user.name,
-        email: user.email,
-      });
+      bugdump.identify({ id: user.id, name: user.name, email: user.email });
     } else {
       bugdump.reset();
     }
+  }, [bugdump, user]);
 
-    return () => {
-      bugdump.destroy();
-    };
-  }, [user]);
-
-  return <div>{/* your app */}</div>;
+  return null;
 }
 ```
+
+`enabled` keeps the widget off until someone signs in, and the effect identifies them without restarting it.
 
 ### Script Tag
 
@@ -936,6 +949,8 @@ bugdump.reset();
 // Clean up and remove the widget
 bugdump.destroy();
 ```
+
+After `destroy()`, the fire-and-forget methods (`identify`, `reset`, `setContext`, `setTheme`, `open`, `close`, `identifyTask`, `clearTask`) do nothing on that instance, so a late cleanup cannot crash your app; `submit`, `collectTelemetry` and `getHttpClient` throw.
 
 ## Telemetry Snapshot
 

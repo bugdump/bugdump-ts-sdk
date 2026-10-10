@@ -579,3 +579,65 @@ describe('Bugdump error events', () => {
     expect(errorCalls().map((call) => call.keepalive)).toEqual([true, false]);
   });
 });
+
+describe('a destroyed Bugdump instance', () => {
+  it('ignores the fire-and-forget methods instead of throwing', () => {
+    const bugdump = Bugdump.init({ apiKey: 'bd_test', endpoint: ENDPOINT });
+    bugdump.destroy();
+
+    expect(() => {
+      bugdump.identify({ id: 'user-1' });
+      bugdump.reset();
+      bugdump.setContext({ plan: 'pro' });
+      bugdump.setTheme('dark');
+      bugdump.open({ taskId: 42 });
+      bugdump.close();
+      bugdump.identifyTask(42);
+      bugdump.clearTask();
+    }).not.toThrow();
+    expect(bugdump.getUser()).toBeNull();
+    expect(bugdump.getContext()).toEqual({});
+    expect(bugdump.getActiveTaskId()).toBeNull();
+    expect(bugdump.isWidgetOpen()).toBe(false);
+  });
+
+  it('still throws from the methods that return something', async () => {
+    const bugdump = Bugdump.init({ apiKey: 'bd_test', endpoint: ENDPOINT });
+    bugdump.destroy();
+
+    await expect(bugdump.submit({ description: 'Broken' })).rejects.toThrow('This Bugdump instance was destroyed.');
+    expect(() => bugdump.collectTelemetry()).toThrow('This Bugdump instance was destroyed.');
+    expect(() => bugdump.getHttpClient()).toThrow('This Bugdump instance was destroyed.');
+  });
+
+  it('can be destroyed twice', () => {
+    const bugdump = Bugdump.init({ apiKey: 'bd_test', endpoint: ENDPOINT });
+    bugdump.destroy();
+
+    expect(() => bugdump.destroy()).not.toThrow();
+    expect(Bugdump.getInstance()).toBeNull();
+  });
+
+  it('leaves a newer instance in place when the stale one is destroyed again', () => {
+    const stale = Bugdump.init({ apiKey: 'bd_test', endpoint: ENDPOINT });
+    stale.destroy();
+    const live = Bugdump.init({ apiKey: 'bd_live', endpoint: ENDPOINT });
+
+    stale.destroy();
+
+    expect(Bugdump.getInstance()).toBe(live);
+    expect(live.getConfig()?.apiKey).toBe('bd_live');
+    live.identify({ id: 'user-1' });
+    expect(live.getUser()).toEqual({ id: 'user-1' });
+  });
+
+  it('is replaced by a fresh instance on the next init', () => {
+    const first = Bugdump.init({ apiKey: 'bd_test', endpoint: ENDPOINT });
+    first.destroy();
+
+    const second = Bugdump.init({ apiKey: 'bd_next', endpoint: ENDPOINT });
+
+    expect(second).not.toBe(first);
+    expect(second.getConfig()?.apiKey).toBe('bd_next');
+  });
+});

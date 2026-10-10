@@ -18,7 +18,8 @@ export function runAutoInit(): void {
       return scripts[scripts.length - 1] as HTMLScriptElement | null;
     })();
 
-  if (currentScript) {
+  // The manual-init tag and a bundler's chunk script are the current script too, with no key.
+  if (currentScript?.hasAttribute('data-api-key')) {
     const el = currentScript as HTMLElement;
     const apiKey = el.getAttribute('data-api-key');
     const endpoint = el.getAttribute('data-api-url');

@@ -80,3 +80,25 @@ describe('runAutoInit error capture attributes', () => {
     expect(initConfig()).toEqual({ apiKey: 'bd_test' });
   });
 });
+
+describe('runAutoInit without a key', () => {
+  it('skips quietly when the current script has no data-api-key attribute', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    stubScriptTag({ src: 'https://shop.test/_next/static/chunks/main.js' });
+
+    runAutoInit();
+
+    expect(initMock).not.toHaveBeenCalled();
+    expect(warn).not.toHaveBeenCalled();
+  });
+
+  it('still warns when data-api-key is there but empty', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    stubScriptTag({ 'data-api-key': '' });
+
+    runAutoInit();
+
+    expect(initMock).not.toHaveBeenCalled();
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('data-api-key is missing or empty'));
+  });
+});
