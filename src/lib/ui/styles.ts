@@ -86,6 +86,7 @@ export function createStyles(): string {
       max-height: 100vh;
       max-height: 100dvh;
       padding: 20px;
+      padding-bottom: calc(20px + var(--bugdump-offset-bottom, 0px));
       display: flex;
       flex-direction: column;
       align-items: flex-end;
@@ -1090,7 +1091,12 @@ export function createStyles(): string {
       }
 
       .bd-dock {
-        margin: 0 20px calc(20px + env(safe-area-inset-bottom, 0px));
+        margin: 0 20px calc(20px + var(--bugdump-offset-bottom, 0px) + env(safe-area-inset-bottom, 0px));
+      }
+
+      /* Next to the button the bubble covers the page's own content on a phone. */
+      .bd-bubble {
+        display: none;
       }
 
       /* A bottom sheet: pinned to the screen edge and covering the trigger, which is

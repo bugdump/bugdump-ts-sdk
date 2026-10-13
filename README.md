@@ -431,6 +431,20 @@ bugdump.setTheme('light');
 
 Calling `setTheme` on the npm package before `init` throws, so always pass the starting theme to `init` as well.
 
+### Placement on Small Screens
+
+On screens up to 440px wide the widget shows only the round button: the `bubbleText` teaser is hidden there, so it doesn't cover your page.
+
+If your page has a fixed bar at the bottom, such as a mobile tab bar, lift the button above it with the `--bugdump-offset-bottom` CSS variable on your page. The widget adds it to its 20px bottom margin:
+
+```css
+@media (max-width: 767px) {
+  :root {
+    --bugdump-offset-bottom: 64px; /* the height of your bottom bar */
+  }
+}
+```
+
 ### Custom Icon
 
 Customize the floating button icon. The `icon` option accepts a string and auto-detects the type:
