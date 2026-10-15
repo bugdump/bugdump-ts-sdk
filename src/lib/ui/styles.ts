@@ -342,6 +342,7 @@ export function createStyles(): string {
       gap: 12px;
     }
 
+    /* iOS zooms the page into any field under 16px when it gets focus, so .bd-input matches. */
     .bd-textarea {
       width: 100%;
       min-height: 56px;
@@ -352,7 +353,7 @@ export function createStyles(): string {
       resize: none;
       overflow-y: auto;
       font-family: inherit;
-      font-size: 14px;
+      font-size: 16px;
       line-height: 1.5;
       color: var(--bd-text);
       background: var(--bd-input-bg);
@@ -591,7 +592,7 @@ export function createStyles(): string {
       border: 1.5px dashed var(--bd-border-dashed);
       border-radius: 10px;
       font-family: inherit;
-      font-size: 14px;
+      font-size: 16px;
       color: var(--bd-text);
       background: var(--bd-input-bg);
       outline: none;
@@ -1127,12 +1128,6 @@ export function createStyles(): string {
 
       .bd-panel__body {
         overscroll-behavior: contain;
-      }
-
-      /* iOS zooms the page into any field under 16px when it gets focus. */
-      .bd-textarea,
-      .bd-input {
-        font-size: 16px;
       }
 
       .bd-panel__close,
