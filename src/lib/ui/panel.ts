@@ -89,6 +89,9 @@ export class Panel {
   private micStream: MediaStream | null = null;
   private micSource: MediaStreamAudioSourceNode | null = null;
   private micEnabled = false;
+  // Kept apart from micEnabled, which is already false when the recorder's onstop runs:
+  // stopRecording turns the microphone off first.
+  private micUsedDuringRecording = false;
   private selectedMicDeviceId: string | null = null;
 
   private features: PanelFeatures;
@@ -890,6 +893,10 @@ export class Panel {
 
   private startRecordingNative(): void {
     if (!this.mediaRecorder) return;
+    // Safari keeps an AudioContext created outside a click suspended, and a suspended one records
+    // no microphone. This runs from the Record click.
+    this.audioContext?.resume().catch(() => {});
+    this.micUsedDuringRecording = this.micEnabled;
     this.mediaRecorder.start(RECORDING_TIMESLICE_MS);
     this.setRecordingState(true);
     // Visualizer taps the mixed destination so it shows both display + mic audio
@@ -934,12 +941,10 @@ export class Panel {
     if ('contentHint' in videoTrack) {
       videoTrack.contentHint = 'detail';
     }
-    const tracks: MediaStreamTrack[] = [videoTrack];
-    if (audioTracks.length > 0) {
-      const mixedAudioTrack = this.audioDestination.stream.getAudioTracks()[0]!;
-      tracks.push(mixedAudioTrack);
-    }
-    const recordStream = new MediaStream(tracks);
+    // Always record the mixed track, even when the shared surface brought no audio: the microphone
+    // can be turned on later, and a MediaRecorder cannot gain a track once it has started.
+    const mixedAudioTrack = this.audioDestination.stream.getAudioTracks()[0]!;
+    const recordStream = new MediaStream([videoTrack, mixedAudioTrack]);
 
     const mimeType = getSupportedMimeType();
 
@@ -980,6 +985,7 @@ export class Panel {
           recordingStartedAt: this.recordingStartTime,
           recordingEndedAt,
           durationMs: recordingEndedAt - this.recordingStartTime,
+          micUsed: this.micUsedDuringRecording,
         },
       });
       // Native (screen-capture) recording has no rrweb slice of its own, so bind the
@@ -1026,6 +1032,7 @@ export class Panel {
       this.selectedMicDeviceId = track.getSettings().deviceId ?? deviceId;
     }
     this.micEnabled = true;
+    if (this.recording) this.micUsedDuringRecording = true;
     this.elements.recordingBarMic.classList.add('bd-recording-bar__mic--active');
 
     if (this.audioContext && this.audioDestination) {
