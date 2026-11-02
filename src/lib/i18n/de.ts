@@ -3,7 +3,7 @@ import type { BugdumpTranslations } from '../types';
 export const de: Required<BugdumpTranslations> = {
   title: 'Feedback senden',
   triggerTitle: 'Feedback senden',
-  descriptionPlaceholder: 'Was möchten Sie uns mitteilen?',
+  descriptionPlaceholder: 'Geben Sie uns Feedback oder melden Sie ein Problem',
   attachButton: 'Datei',
   screenshotButton: 'Screenshot',
   recordButton: 'Aufnahme',

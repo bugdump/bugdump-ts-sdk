@@ -36,6 +36,7 @@ export interface BugdumpTranslations {
   successTitle?: string;
   successSubtitle?: string;
   errorMessage?: string;
+  /** @deprecated Has no effect: the description is optional, so the widget never shows this message. */
   emptyDescriptionMessage?: string;
   quotaExceededMessage?: string;
   arrowTool?: string;
@@ -230,7 +231,7 @@ export interface ReportPayload {
 }
 
 export interface SubmitOptions {
-  description: string;
+  description?: string;
   /** Falls back to the name passed to `identify()`. */
   reporterName?: string;
   /** Falls back to the email passed to `identify()`. */

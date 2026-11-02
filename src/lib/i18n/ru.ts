@@ -3,7 +3,7 @@ import type { BugdumpTranslations } from '../types';
 export const ru: Required<BugdumpTranslations> = {
   title: 'Отправить отзыв',
   triggerTitle: 'Отправить отзыв',
-  descriptionPlaceholder: 'Что у вас на уме?',
+  descriptionPlaceholder: 'Поделитесь отзывом или сообщите о проблеме',
   attachButton: 'Файл',
   screenshotButton: 'Скриншот',
   recordButton: 'Запись',

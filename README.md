@@ -196,7 +196,7 @@ Bugdump.init({
 | ------------------------- | ------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------- |
 | `title`                   | `Send feedback`                                                          | Panel header title and trigger button aria-label                                              |
 | `triggerTitle`            | falls back to `title`                                                    | Floating button hover tooltip (`title` attribute) and aria-label                              |
-| `descriptionPlaceholder`  | `What's on your mind?`                                                   | Textarea placeholder                                                                          |
+| `descriptionPlaceholder`  | `Share your feedback or report a problem`                                | Textarea placeholder                                                                          |
 | `attachButton`            | `Attach`                                                                 | File attach button label                                                                      |
 | `screenshotButton`        | `Screenshot`                                                             | Screenshot button label                                                                       |
 | `recordButton`            | `Record`                                                                 | Screen recording button label                                                                 |
@@ -213,7 +213,7 @@ Bugdump.init({
 | `successTitle`            | `Feedback sent!`                                                         | Success message title                                                                         |
 | `successSubtitle`         | `Thank you for your feedback.`                                           | Success message subtitle                                                                      |
 | `errorMessage`            | `Something went wrong. Please try again.`                                | Error message                                                                                 |
-| `emptyDescriptionMessage` | `Please describe what happened before sending.`                          | Validation message shown when submitting with an empty description                            |
+| `emptyDescriptionMessage` | `Please describe what happened before sending.`                          | Deprecated, has no effect: the description is optional                                        |
 | `quotaExceededMessage`    | `This site is not accepting feedback right now. Please try again later.` | Notice shown, with Send disabled, while the project is not accepting reports                  |
 | `closeButton`             | `Close`                                                                  | Close button on the success screen                                                            |
 | `submitAnother`           | `Submit another`                                                         | Button on the success screen to file another report                                           |
@@ -636,11 +636,11 @@ const { taskPublicId } = await bugdump.submit({
 });
 ```
 
-Only `description` is required. Everything the widget attaches is attached here too: console logs, network requests, recent user actions, performance data, the page URL, browser and viewport, your `setContext()` data, and the session replay when your plan includes it.
+Every option is optional, so `submit({})` files a report with no text. Everything the widget attaches is attached here too: console logs, network requests, recent user actions, performance data, the page URL, browser and viewport, your `setContext()` data, and the session replay when your plan includes it.
 
 | Option          | Type     | Description                                                                                                                                                               |
 | --------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `description`   | `string` | **Required.** The report text, up to 10,000 characters                                                                                                                    |
+| `description`   | `string` | The report text, up to 10,000 characters                                                                                                                                  |
 | `reporterName`  | `string` | Falls back to the name passed to `identify()`                                                                                                                             |
 | `reporterEmail` | `string` | Must be a valid email. Falls back to the email passed to `identify()`                                                                                                     |
 | `priority`      | `string` | A priority label as your project defines it, e.g. `"High"`, matched case-insensitively. A label the project does not have is ignored, and so is any priority on a report attached to an existing task |

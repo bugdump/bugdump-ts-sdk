@@ -271,7 +271,7 @@ export class Bugdump {
 
     const result = await this.sendReport({
       clientReportId: createUuid(),
-      description: options.description,
+      description: options.description ?? '',
       reporterName: options.reporterName ?? '',
       reporterEmail: options.reporterEmail ?? '',
       taskPublicId: options.taskId ?? null,

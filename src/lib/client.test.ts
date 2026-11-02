@@ -170,6 +170,15 @@ describe('Bugdump.submit', () => {
     expect(reportBody()).toMatchObject({ reporterName: 'Grace', reporterEmail: 'grace@example.com' });
   });
 
+  it('sends an empty description when the form passes none', async () => {
+    const bugdump = Bugdump.init({ apiKey: 'bd_test', endpoint: ENDPOINT });
+    stubBrowser();
+
+    await bugdump.submit({ reporterName: 'Grace' });
+
+    expect(reportBody()).toMatchObject({ description: '', reporterName: 'Grace' });
+  });
+
   it('uploads files first and attaches them to the report', async () => {
     const bugdump = Bugdump.init({ apiKey: 'bd_test', endpoint: ENDPOINT });
     stubBrowser();

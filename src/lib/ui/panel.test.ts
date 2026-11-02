@@ -77,6 +77,8 @@ type PanelInternals = {
   stopRecording(): void;
   enableMicWithDevice(deviceId: string | null): Promise<void>;
   attachments: { type: string; metadata?: Record<string, unknown> }[];
+  setOnSubmit(handler: (data: unknown) => Promise<unknown>): void;
+  handleSubmit(): Promise<void>;
 };
 
 function createPanel(): PanelInternals {
@@ -155,5 +157,21 @@ describe('Panel screen recording', () => {
     panel.startRecording();
 
     expect(await recordingMetadata(panel)).toMatchObject({ micUsed: false });
+  });
+});
+
+describe('Panel submit', () => {
+  afterEach(() => {
+    document.body.innerHTML = '';
+  });
+
+  it('sends a report with no description and no attachments', async () => {
+    const panel = createPanel();
+    const onSubmit = vi.fn(async () => ({ id: 'report-1', taskId: 'task-1', taskPublicId: 7 }));
+    panel.setOnSubmit(onSubmit);
+
+    await panel.handleSubmit();
+
+    expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ description: '', attachments: [] }));
   });
 });

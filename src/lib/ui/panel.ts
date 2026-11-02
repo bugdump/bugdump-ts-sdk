@@ -552,14 +552,6 @@ export class Panel {
     if (!this.acceptingReports) return;
 
     const description = this.elements.textarea.value.trim();
-    // A description is required unless the user attached at least one real file
-    // (screenshots, recordings, voice notes, uploads) — the automatic session replay
-    // does not count, since it is captured without explicit user intent.
-    if (!description && this.visibleAttachments().length === 0) {
-      this.showError(this.t.emptyDescriptionMessage);
-      this.elements.textarea.focus();
-      return;
-    }
 
     if (this.submitting || !this.onSubmit) return;
 
