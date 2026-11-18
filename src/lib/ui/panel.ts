@@ -80,7 +80,7 @@ export class Panel {
   private reporterVisible = false;
   private taskFieldsVisible = false;
   private annotationOverlay: AnnotationOverlay | null = null;
-  private annotationContainer: HTMLDivElement | null = null;
+  private annotationContainer: HTMLElement | null = null;
   private annotationStyleEl: HTMLStyleElement | null = null;
   private audioContext: AudioContext | null = null;
   private audioDestination: MediaStreamAudioDestinationNode | null = null;
@@ -650,7 +650,7 @@ export class Panel {
     height: number,
     existingAttachmentId?: string,
   ): void {
-    this.annotationContainer = document.createElement('div');
+    this.annotationContainer = document.createElement('bugdump-annotation');
     this.annotationContainer.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;z-index:2147483647;';
     const themeClass = getThemeClass(this.theme);
     if (themeClass) {

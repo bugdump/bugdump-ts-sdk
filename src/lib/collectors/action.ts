@@ -16,7 +16,7 @@ const SENSITIVE_AUTOCOMPLETE = [
   'one-time-code',
 ];
 
-const WIDGET_HOST_TAG = 'bugdump-widget';
+const WIDGET_HOST_TAGS = new Set(['bugdump-widget', 'bugdump-annotation']);
 
 type HistoryMethod = 'pushState' | 'replaceState';
 const HISTORY_METHODS: HistoryMethod[] = ['pushState', 'replaceState'];
@@ -202,12 +202,13 @@ export class ActionCollector {
 }
 
 function isFromWidget(event: Event): boolean {
-  // The widget host has a closed shadow root, so any event originating inside it
-  // retargets to the host — `event.target` is the `<bugdump-widget>` host element.
-  // This is necessary and sufficient: there is no widget-internal event whose target
-  // is not the host. An O(1) check, no composed-path allocation per event.
+  // The widget and the screenshot annotation overlay each mount a host with a closed
+  // shadow root, so any event originating inside one retargets to its host — `event.target`
+  // is the `<bugdump-widget>` or `<bugdump-annotation>` element. This is necessary and
+  // sufficient: there is no widget-internal event whose target is not a host. An O(1)
+  // check, no composed-path allocation per event.
   const target = event.target;
-  return target instanceof Element && target.tagName.toLowerCase() === WIDGET_HOST_TAG;
+  return target instanceof Element && WIDGET_HOST_TAGS.has(target.tagName.toLowerCase());
 }
 
 function truncate(value: string): string {

@@ -891,11 +891,13 @@ Every event sent counts toward your project's monthly error limit, including eve
 
 ## Readable stack traces
 
-A stack trace from minified code points into one long line. Upload your source maps with the Bugdump CLI, `@bugdump/cli`, and the error page shows your original files, lines and code instead. The CLI stamps a debug ID into each built JavaScript file and its map, and Bugdump finds the map for every frame by that ID. Maps are stored privately and never served to anyone.
+A stack trace from minified code points into one long line. Upload your source maps with the BugDump CLI, `bugdump`, and the error page shows your original files, lines and code instead. The CLI stamps a debug ID into each built JavaScript file and its map, and Bugdump finds the map for every frame by that ID. Maps are stored privately and never served to anyone.
 
 ```bash
-npm install --save-dev @bugdump/cli
+curl -fsSL https://bugdump.com/install.sh | sh
 ```
+
+On Windows: `iwr -useb https://bugdump.com/install.ps1 | iex`. The Linux binaries are static, so they also run on Alpine CI images (use `wget -qO- https://bugdump.com/install.sh | sh` where there is no curl).
 
 1. Build with hidden source maps, so the maps are written but your files don't reference them: `vite build --sourcemap hidden`, `devtool: 'hidden-source-map'` in webpack, or `output.sourcemap: 'hidden'` in Rollup.
 2. Run `bugdump sourcemaps inject <dir>` on the build output. It adds a one-line snippet and a `//# debugId=` comment to each JavaScript file that has a map, and the same ID to the map. It needs no token, and running it twice changes nothing.
